@@ -1,0 +1,10 @@
+export async function register() {
+  // Initialiser les cron jobs et valider l'env uniquement côté Node.js (pas Edge)
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { validateEnv } = await import('./lib/env')
+    validateEnv()
+
+    const { initCronJobs } = await import('./lib/cron')
+    initCronJobs()
+  }
+}

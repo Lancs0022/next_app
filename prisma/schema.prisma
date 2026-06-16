@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== AUTH / RBAC ====================
+
+model Utilisateur {
+  id_utilisateur Int                  @id @default(autoincrement())
+  tenant_id      Int
+  nom            String
+  prenom         String
+  email          String               @unique
+  password_hash  String
+  role           String
+  actif          Boolean              @default(true)
+  created_at     DateTime             @default(now())
+  updated_at     DateTime             @updatedAt
+  overrides      UserAccessOverride[]
+
+  @@map("utilisateur")
+}
+
+model AccessDomain {
+  id_domain  Int                  @id @default(autoincrement())
+  code       String               @unique
+  label      String
+  actif      Boolean              @default(true)
+  overrides  UserAccessOverride[]
+  roleMatrix RoleAccessMatrix[]
+
+  @@map("access_domain")
+}
+
+model UserAccessOverride {
+  id_utilisateur Int
+  id_domain      Int
+  can_read       Boolean?
+  can_write      Boolean?
+  can_delete     Boolean?
+  can_manage     Boolean?
+  utilisateur    Utilisateur  @relation(fields: [id_utilisateur], references: [id_utilisateur])
+  domain         AccessDomain @relation(fields: [id_domain], references: [id_domain])
+
+  @@id([id_utilisateur, id_domain])
+  @@map("user_access_override")
+}
+
+model Role {
+  id_role Int                @id @default(autoincrement())
+  code    String             @unique
+  label   String
+  actif   Boolean            @default(true)
+  matrix  RoleAccessMatrix[]
+
+  @@map("role")
+}
+
+model RoleAccessMatrix {
+  id_role    Int
+  id_domain  Int
+  can_read   Boolean      @default(false)
+  can_write  Boolean      @default(false)
+  can_delete Boolean      @default(false)
+  can_manage Boolean      @default(false)
+  role       Role         @relation(fields: [id_role], references: [id_role])
+  domain     AccessDomain @relation(fields: [id_domain], references: [id_domain])
+
+  @@id([id_role, id_domain])
+  @@map("role_access_matrix")
+}
+
+// ==================== STOCK ====================
+
+model StockLocal {
+  id_stock       Int      @id @default(autoincrement())
+  tenant_id      Int
+  id_produit     Int
+  id_pdv         Int
+  quantite       Decimal  @db.Decimal(10, 2)
+  seuil_alerte   Decimal? @db.Decimal(10, 2)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("stock_local")
+}
+
+model StockSnapshot {
+  id_snapshot    Int      @id @default(autoincrement())
+  tenant_id      Int
+  id_pdv         Int
+  periode        String
+  created_at     DateTime @default(now())
+  lignes         SnapshotLigne[]
+
+  @@map("stock_snapshot")
+}
+
+model SnapshotLigne {
+  id_ligne       Int           @id @default(autoincrement())
+  id_snapshot    Int
+  id_produit     Int
+  quantite       Decimal       @db.Decimal(10, 2)
+  snapshot       StockSnapshot @relation(fields: [id_snapshot], references: [id_snapshot])
+
+  @@map("snapshot_ligne")
+}
+
+// ==================== PRODUITS ====================
+
+model ProduitCatalogue {
+  id_produit     Int      @id @default(autoincrement())
+  tenant_id      Int
+  nom            String
+  description    String?
+  prix_achat     Decimal  @db.Decimal(10, 2)
+  prix_vente     Decimal  @db.Decimal(10, 2)
+  image_url      String?
+  actif          Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("produit_catalogue")
+}
+
+// ==================== COLLABORATEURS ====================
+
+model Collaborateur {
+  id_collaborateur Int      @id @default(autoincrement())
+  tenant_id        Int
+  nom              String
+  prenom           String
+  email            String?
+  telephone        String?
+  poste            String?
+  actif            Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("collaborateur")
+}
+
+// ==================== LIVRAISONS ====================
+
+model Livraison {
+  id_livraison   Int      @id @default(autoincrement())
+  tenant_id      Int
+  id_pdv         Int
+  id_produit     Int
+  quantite       Decimal  @db.Decimal(10, 2)
+  prix_unitaire  Decimal  @db.Decimal(10, 2)
+  date_livraison DateTime @default(now())
+  created_at     DateTime @default(now())
+
+  @@map("livraison")
+}
+
+// ==================== POINTS DE VENTE ====================
+
+model PointDeVente {
+  id_pdv     Int      @id @default(autoincrement())
+  tenant_id  Int
+  nom        String
+  adresse    String?
+  actif      Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("point_de_vente")
+}
+
+// ==================== COMMANDES ====================
+
+model Commande {
+  id_commande Int      @id @default(autoincrement())
+  tenant_id   Int
+  id_pdv      Int
+  statut      String   @default("en_attente")
+  total       Decimal  @db.Decimal(10, 2)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("commande")
+}
+
+// ==================== ENCAISSEMENTS ====================
+
+model Encaissement {
+  id_encaissement   Int      @id @default(autoincrement())
+  tenant_id         Int
+  id_pdv            Int
+  montant           Decimal  @db.Decimal(10, 2)
+  mode_paiement     String
+  date_encaissement DateTime @default(now())
+  created_at        DateTime @default(now())
+
+  @@map("encaissement")
+}
+
+// ==================== VENTES ====================
+
+model Vente {
+  id_vente   Int           @id @default(autoincrement())
+  tenant_id  Int
+  id_pdv     Int
+  total      Decimal       @db.Decimal(10, 2)
+  statut     String        @default("validee")
+  created_at DateTime      @default(now())
+  articles   VenteArticle[]
+
+  @@map("vente")
+}
+
+model VenteArticle {
+  id_ligne      Int     @id @default(autoincrement())
+  id_vente      Int
+  id_produit    Int
+  quantite      Decimal @db.Decimal(10, 2)
+  prix_unitaire Decimal @db.Decimal(10, 2)
+  vente         Vente   @relation(fields: [id_vente], references: [id_vente])
+
+  @@map("vente_article")
+}
+
+// ==================== FINANCE ====================
+
+model TransactionFinanciere {
+  id_transaction   Int      @id @default(autoincrement())
+  tenant_id        Int
+  type             String
+  montant          Decimal  @db.Decimal(10, 2)
+  description      String?
+  date_transaction DateTime @default(now())
+  created_at       DateTime @default(now())
+
+  @@map("transaction_financiere")
+}
+
+// ==================== ABONNEMENTS ====================
+
+model Abonnement {
+  id_abonnement  Int                       @id @default(autoincrement())
+  tenant_id      Int
+  nom            String
+  montant        Decimal                   @db.Decimal(10, 2)
+  periodicite    String
+  actif          Boolean                   @default(true)
+  created_at     DateTime                  @default(now())
+  updated_at     DateTime                  @updatedAt
+  paiements      AbonnementPaiement[]
+  collaborateurs AbonnementCollaborateur[]
+
+  @@map("abonnement")
+}
+
+model AbonnementPaiement {
+  id_paiement   Int        @id @default(autoincrement())
+  id_abonnement Int
+  montant       Decimal    @db.Decimal(10, 2)
+  date_paiement DateTime   @default(now())
+  abonnement    Abonnement @relation(fields: [id_abonnement], references: [id_abonnement])
+
+  @@map("abonnement_paiement")
+}
+
+model AbonnementCollaborateur {
+  id_abonnement    Int
+  id_collaborateur Int
+  abonnement       Abonnement @relation(fields: [id_abonnement], references: [id_abonnement])
+
+  @@id([id_abonnement, id_collaborateur])
+  @@map("abonnement_collaborateur")
+}
+
+// ==================== CLIENTS ====================
+
+model Client {
+  id_client  Int      @id @default(autoincrement())
+  tenant_id  Int
+  nom        String
+  prenom     String?
+  email      String?
+  telephone  String?
+  actif      Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("client")
+}
