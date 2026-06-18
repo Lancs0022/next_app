@@ -100,7 +100,7 @@ export default function CollaborateursPage() {
   }
 
   const stats = [
-    { label: 'Total', value: data.length, color: 'bg-blue-500' },
+    { label: 'Total', value: data.length, color: 'bg-primary' },
     { label: 'Actifs', value: data.filter(d => d.statut === 'actif').length, color: 'bg-green-500' },
     { label: 'Inactifs', value: data.filter(d => d.statut === 'inactif').length, color: 'bg-slate-500' },
     { label: 'Emails', value: data.filter(d => d.email).length, color: 'bg-purple-500' },

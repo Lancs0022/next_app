@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 
@@ -22,32 +22,39 @@ const AdminLayout = ({
   const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false)
 
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
     const updateLayout = () => {
-      if (typeof window === 'undefined') return
-      const width = window.innerWidth
-      if (width < 1024) {
-        setIsMobileSidebarMode(true)
-        setIsSidebarOverlayOpen(false)
-        setIsSidebarCollapsed(false)
-      } else {
-        setIsMobileSidebarMode(false)
-        setIsSidebarOverlayOpen(false)
-      }
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        if (typeof window === 'undefined') return
+        const width = window.innerWidth
+        if (width < 1024) {
+          setIsMobileSidebarMode(true)
+          setIsSidebarOverlayOpen(false)
+          setIsSidebarCollapsed(false)
+        } else {
+          setIsMobileSidebarMode(false)
+          setIsSidebarOverlayOpen(false)
+        }
+      }, 100)
     }
     updateLayout()
     window.addEventListener('resize', updateLayout)
-    return () => window.removeEventListener('resize', updateLayout)
+    return () => {
+      window.removeEventListener('resize', updateLayout)
+      clearTimeout(timeout)
+    }
   }, [])
 
-  const handleToggleSidebar = () => {
+  const handleToggleSidebar = useCallback(() => {
     if (isMobileSidebarMode) {
       setIsSidebarOverlayOpen((prev) => !prev)
     } else {
       setIsSidebarCollapsed((prev) => !prev)
     }
-  }
+  }, [isMobileSidebarMode])
 
-  const handleCloseOverlay = () => setIsSidebarOverlayOpen(false)
+  const handleCloseOverlay = useCallback(() => setIsSidebarOverlayOpen(false), [])
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-900 relative">
@@ -64,12 +71,15 @@ const AdminLayout = ({
           isSidebarOverlayOpen={isSidebarOverlayOpen}
         />
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
-          <div className="p-4 md:p-6 lg:p-8">{children}</div>
+          <div className="p-10 md:p-10 lg:p-10">0{children}</div>
         </main>
       </div>
       {isMobileSidebarMode && isSidebarOverlayOpen && (
         <>
-          <div className="fixed inset-0 bg-black/40 z-40" onClick={handleCloseOverlay} />
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={handleCloseOverlay}
+          />
           <div className="fixed inset-y-0 left-0 z-50">
             <Sidebar activeRoute={activeRoute} isCollapsed={false} onNavigate={handleCloseOverlay} />
           </div>

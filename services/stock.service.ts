@@ -79,6 +79,24 @@ export async function createStockAjustement({
   }
 }
 
+export async function listCatalogueStock(tenantId: number) {
+  const rows = await prisma.produitCatalogue.findMany({
+    where: { tenant_id: tenantId, actif: true },
+    orderBy: { id_produit: 'desc' },
+  })
+  return { data: rows }
+}
+
+export async function listStockMouvements(params: {
+  tenantId: number
+  id_lot?: string
+  limit?: number
+}) {
+  // No stock_mouvement table yet — return empty dataset
+  const { tenantId: _tenantId, id_lot: _id_lot, limit: _limit } = params
+  return { data: [] }
+}
+
 export async function generateStockSnapshot() {
   const snapshots = await prisma.stockLocal.findMany()
   const periode = new Date().toISOString().substring(0, 7)

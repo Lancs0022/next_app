@@ -17,6 +17,13 @@ interface Vente {
   date: string
 }
 
+const STAT_CONFIG = [
+  { key: 'ventesJour', label: 'Ventes du jour', accent: 'border-l-primary', badge: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' },
+  { key: 'stockCritique', label: 'Stock critique', accent: 'border-l-amber-500', badge: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30' },
+  { key: 'abonnementsActifs', label: 'Abonnements actifs', accent: 'border-l-emerald-500', badge: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' },
+  { key: 'connectivite', label: 'Connectivité', accent: 'border-l-accent', badge: null },
+] as const
+
 export default function DashboardPage() {
   const [stats] = useState<StatCard>({
     ventesJour: { value: '12 450 Ar', change: '+12%' },
@@ -35,6 +42,7 @@ export default function DashboardPage() {
     <>
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+        {/* Ventes du jour */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">Ventes du jour</h3>
@@ -45,6 +53,7 @@ export default function DashboardPage() {
           <p className="text-xl md:text-2xl font-bold text-navy-dark dark:text-white">{stats.ventesJour.value}</p>
         </div>
 
+        {/* Stock critique */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">Stock critique</h3>
@@ -55,6 +64,7 @@ export default function DashboardPage() {
           <p className="text-xl md:text-2xl font-bold text-navy-dark dark:text-white">{stats.stockCritique.value}</p>
         </div>
 
+        {/* Abonnements actifs */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">Abonnements actifs</h3>
@@ -65,6 +75,7 @@ export default function DashboardPage() {
           <p className="text-xl md:text-2xl font-bold text-navy-dark dark:text-white">{stats.abonnementsActifs.value}</p>
         </div>
 
+        {/* Connectivité */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">Connectivité</h3>
@@ -74,7 +85,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tableau dernières ventes */}
+      {/* Tableau MOC */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
         <div className="p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold text-navy-dark dark:text-white">Dernières ventes</h3>
@@ -83,22 +94,44 @@ export default function DashboardPage() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">ID</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">Produit</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">Quantité</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">Montant</th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">Date</th>
-                <th className="px-4 md:px-6 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">Actions</th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  Produit
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  Quantité
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  Montant
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-4 md:px-6 py-3 text-right text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {ventesData.map((vente, idx) => (
                 <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-navy-dark dark:text-white">{vente.id}</td>
-                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">{vente.produit}</td>
-                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">{vente.quantite}</td>
-                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-semibold text-navy-dark dark:text-white">{vente.montant}</td>
-                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{vente.date}</td>
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-navy-dark dark:text-white">
+                    {vente.id}
+                  </td>
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+                    {vente.produit}
+                  </td>
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+                    {vente.quantite}
+                  </td>
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-semibold text-navy-dark dark:text-white">
+                    {vente.montant}
+                  </td>
+                  <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                    {vente.date}
+                  </td>
                   <td className="px-4 md:px-6 py-4 whitespace-nowrap text-right text-sm">
                     <button className="text-slate-400 hover:text-navy-dark dark:hover:text-white transition-colors">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

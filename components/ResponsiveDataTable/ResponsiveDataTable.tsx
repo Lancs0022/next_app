@@ -151,7 +151,7 @@ const ResponsiveDataTable = ({
                 className={`w-full text-left px-3 py-2 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   a.variant === 'danger'
                     ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-primary/5 dark:hover:bg-primary/5'
                 }`}
               >
                 {a.label}
@@ -228,11 +228,11 @@ const ResponsiveDataTable = ({
           </div>
         </div>
 
-        <div className="divide-y divide-slate-200 dark:divide-slate-700">
+        <div className="divide-y divide-border-subtle dark:divide-slate-700">
           {data.map((row, rowIndex) => (
             <div
               key={row.id || rowIndex}
-              className={`p-4 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50' : ''} ${hoveredRow === rowIndex ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
+              className={`p-4 transition-colors ${onRowClick ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/5' : ''} ${hoveredRow === rowIndex ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
               onClick={() => onRowClick && onRowClick(row)}
               onTouchStart={(e) => handleRowTouchStart(e, row, rowIndex)}
               onTouchEnd={handleRowTouchEnd}
@@ -370,11 +370,11 @@ const ResponsiveDataTable = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+          <tbody className="divide-y divide-border-subtle dark:divide-slate-700">
             {data.map((row, rowIndex) => (
               <tr
                 key={row.id || rowIndex}
-                className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50' : ''} ${hoveredRow === rowIndex ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
+                className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/5' : ''} ${hoveredRow === rowIndex ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
                 onClick={() => onRowClick && onRowClick(row)}
                 onContextMenu={(e) => handleRowContextMenu(e, row, rowIndex)}
                 onMouseEnter={() => setHoveredRow(rowIndex)}

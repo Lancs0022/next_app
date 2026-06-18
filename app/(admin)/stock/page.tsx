@@ -384,7 +384,7 @@ export default function StockPage() {
             {row.libelle_produit || 'Sans nom'}
           </div>
           {row.categorie_produit && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 w-fit">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary dark:bg-primary/15 w-fit">
               {row.categorie_produit}
             </span>
           )}
@@ -530,9 +530,9 @@ export default function StockPage() {
                       {lotsFilters.id_point_vente.map(pvId => {
                         const pv = pointsDeVente.find(p => String(p.id_point_vente) === pvId)
                         return pv ? (
-                          <span key={pvId} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                          <span key={pvId} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-primary/15">
                             PV: {pv.nom}
-                            <button onClick={() => setLotsFilters(prev => ({ ...prev, id_point_vente: prev.id_point_vente.filter(id => id !== pvId) }))} className="hover:text-blue-900 dark:hover:text-blue-100">×</button>
+                            <button onClick={() => setLotsFilters(prev => ({ ...prev, id_point_vente: prev.id_point_vente.filter(id => id !== pvId) }))} className="hover:text-primary-strong dark:hover:text-primary">×</button>
                           </span>
                         ) : null
                       })}

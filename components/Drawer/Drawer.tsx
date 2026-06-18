@@ -27,12 +27,12 @@ const Drawer = ({ open, title, children, onClose, footer }: {
   return (
     <div className="fixed inset-0 z-50">
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
         onClick={() => onClose?.()}
       />
 
       <div className="absolute inset-y-0 right-0 flex max-w-full">
-        <div className="w-screen max-w-lg bg-white dark:bg-slate-800 shadow-xl border-l border-slate-200 dark:border-slate-700 flex flex-col">
+        <div className="w-screen max-w-lg bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 flex flex-col animate-slide-in-right">
           <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-700">
             <h2 className="text-base md:text-lg font-semibold text-slate-900 dark:text-white">
               {title}

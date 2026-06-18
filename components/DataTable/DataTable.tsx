@@ -115,12 +115,12 @@ const DataTable = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+          <tbody className="divide-y divide-border-subtle dark:divide-slate-700">
             {data.map((row, rowIndex) => (
               <tr
                 key={row.id || rowIndex}
                 className={`transition-colors ${
-                  onRowClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50' : ''
+                  onRowClick ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/5' : ''
                 } ${hoveredRow === rowIndex ? 'bg-slate-50 dark:bg-slate-700/50' : ''}`}
                 onClick={() => onRowClick && onRowClick(row)}
                 onMouseEnter={() => setHoveredRow(rowIndex)}
