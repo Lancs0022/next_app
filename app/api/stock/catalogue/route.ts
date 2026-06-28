@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
 import { listCatalogueStock } from '@/services/stock.service'
 
 export const GET = withAuth(
-  async (_req, _ctx, { tenantId }) => {
-    const data = await listCatalogueStock(tenantId)
+  async (req, _ctx, { tenantId }) => {
+    const idCollaborateur = req.nextUrl.searchParams.get('id_collaborateur') || undefined
+    const data = await listCatalogueStock(tenantId, idCollaborateur)
     return NextResponse.json(data)
   },
   'STOCK',

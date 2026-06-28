@@ -15,6 +15,7 @@ interface TypeaheadSelectProps {
   onChange?: (value: string) => void
   placeholder?: string
   disabled?: boolean
+  allowCustomInput?: boolean
   showAddButton?: boolean
   onAddClick?: () => void
   addAriaLabel?: string
@@ -27,6 +28,7 @@ const TypeaheadSelect = ({
   onChange,
   placeholder = 'Rechercher…',
   disabled = false,
+  allowCustomInput = false,
   showAddButton = false,
   onAddClick,
   addAriaLabel = 'Ajouter'
@@ -54,7 +56,7 @@ const TypeaheadSelect = ({
 
   const handleSelect = (opt: Option) => {
     onChange?.(String(opt.value))
-    setQuery('')
+    setQuery(allowCustomInput ? String(opt.value) : '')
     setOpen(false)
   }
 
@@ -68,7 +70,7 @@ const TypeaheadSelect = ({
   const handleFocus = () => {
     if (!disabled) {
       setOpen(true)
-      setQuery('')
+      setQuery(allowCustomInput ? String(value ?? '') : '')
     }
   }
 
@@ -82,7 +84,7 @@ const TypeaheadSelect = ({
       <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
           <div className="flex items-center h-[42px] px-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
-            {selectedOption && !open ? (
+            {selectedOption && !open && !allowCustomInput ? (
               <div className="flex items-center justify-between w-full min-w-0">
                 <span className="text-sm truncate">{selectedOption.label}</span>
                 <button
@@ -100,10 +102,17 @@ const TypeaheadSelect = ({
               <input
                 ref={inputRef}
                 type="text"
-                value={query}
-                onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+                value={allowCustomInput && !open ? String(value ?? '') : query}
+                onChange={(e) => {
+                  const nextValue = e.target.value
+                  setQuery(nextValue)
+                  setOpen(true)
+                  if (allowCustomInput) {
+                    onChange?.(nextValue)
+                  }
+                }}
                 onFocus={handleFocus}
-                placeholder={selectedOption ? selectedOption.label : placeholder}
+                placeholder={!allowCustomInput && selectedOption ? selectedOption.label : placeholder}
                 disabled={disabled}
                 className="w-full bg-transparent outline-none text-sm placeholder-slate-500 dark:placeholder-slate-400"
               />

@@ -16,6 +16,7 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<DbUser>
   logout: () => Promise<void>
+  updateUser: (updates: Partial<Pick<DbUser, 'nom' | 'prenom' | 'email'>>) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const res = await fetch('/api/auth/me')
+        const res = await fetch('/api/auth/me', { credentials: 'include' })
         if (res.ok) {
           const { user } = await res.json()
           setCurrentUser(user)
@@ -54,6 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password }),
     })
     if (!res.ok) {
@@ -67,14 +69,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
     } finally {
       setCurrentUser(null)
     }
   }
 
+  const updateUser = async (updates: Partial<Pick<DbUser, 'nom' | 'prenom' | 'email'>>) => {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    })
+    if (!res.ok) {
+      const { error } = await res.json()
+      throw new Error(error || 'Erreur de mise à jour')
+    }
+    const { user } = await res.json()
+    setCurrentUser((prev) => (prev ? { ...prev, ...user } : prev))
+  }
+
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, loading }}>
+    <AuthContext.Provider value={{ currentUser, login, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   )

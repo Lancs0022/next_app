@@ -2,12 +2,16 @@
 
 import { useEffect } from 'react'
 
-const Drawer = ({ open, title, children, onClose, footer }: {
+import { Z_DRAWER } from '@/lib/zIndex'
+
+const Drawer = ({ open, title, children, onClose, footer, wide = false, fullScreen = false }: {
   open: boolean
   title?: React.ReactNode
   children?: React.ReactNode
   onClose?: () => void
   footer?: React.ReactNode
+  wide?: boolean
+  fullScreen?: boolean
 }) => {
   useEffect(() => {
     if (!open) return
@@ -25,14 +29,14 @@ const Drawer = ({ open, title, children, onClose, footer }: {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0" style={{ zIndex: Z_DRAWER }}>
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
         onClick={() => onClose?.()}
       />
 
       <div className="absolute inset-y-0 right-0 flex max-w-full">
-        <div className="w-screen max-w-lg bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 flex flex-col animate-slide-in-right">
+        <div className={`w-screen ${fullScreen ? 'max-w-full' : wide ? 'max-w-5xl' : 'max-w-lg'} bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 flex flex-col animate-slide-in-right`}>
           <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-700">
             <h2 className="text-base md:text-lg font-semibold text-slate-900 dark:text-white">
               {title}

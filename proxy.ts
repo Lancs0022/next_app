@@ -7,7 +7,6 @@ const PROTECTED_PREFIX = [
   '/collaborateurs',
   '/finance',
   '/commandes',
-  '/config',
   '/settings',
   '/abonnements',
   '/admin-tools',

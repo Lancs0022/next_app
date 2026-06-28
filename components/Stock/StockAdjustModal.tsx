@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Modal from '@/components/Modal/Modal'
+import { Z_MODAL } from '@/lib/zIndex'
 
 interface Lot {
   id_lot: string | number
@@ -115,7 +116,7 @@ const StockAdjustModal = ({ open, onClose, lot, onSubmit, loading = false }: Sto
     <Modal
       open={open}
       title={lot ? `Ajuster le stock du lot #${lot.id_lot}` : 'Ajuster le stock'}
-      zIndex="z-[60]"
+      zIndex={Z_MODAL}
       preventBackdropClose={true}
       onClose={handleClose}
       footer={

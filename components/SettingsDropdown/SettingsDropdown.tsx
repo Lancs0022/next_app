@@ -125,7 +125,7 @@ const SettingsDropdown = ({ isOpen, onClose }: SettingsDropdownProps) => {
 
           <button
             onClick={() => {
-              router.push('/config')
+              router.push('/settings')
               onClose()
             }}
             className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-3"

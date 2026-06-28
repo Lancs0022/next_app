@@ -1,70 +1,84 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Drawer from '@/components/Drawer/Drawer'
+import TypeaheadSelect from '@/components/TypeaheadSelect'
 
 interface Collaborateur {
   id_collaborateur: string | number
   nom: string
 }
 
+interface PointDeVente {
+  id_pdv: string | number
+  nom: string
+}
+
 interface CatalogueFormData {
   id_collaborateur: string
-  libelle: string
+  nom: string
   categorie: string
+  unite: string
+  seuil_alerte: string
+  id_pdv: string
   description: string
-  prix_initial_actuel: string
-  marge_actuelle: string
 }
 
 interface AddCatalogueDrawerProps {
   open: boolean
   onClose: (form?: CatalogueFormData) => void
   collaborateurs: Collaborateur[]
+  pointsVente?: PointDeVente[]
+  categories?: string[]
   onSubmit: (form: CatalogueFormData) => void
   loading?: boolean
   draft?: CatalogueFormData | null
 }
 
+const emptyForm: CatalogueFormData = {
+  id_collaborateur: '',
+  nom: '',
+  categorie: '',
+  unite: '',
+  seuil_alerte: '',
+  id_pdv: '',
+  description: ''
+}
+
 const AddCatalogueDrawer = ({ 
   open, 
   onClose, 
-  collaborateurs, 
+  collaborateurs,
+  pointsVente = [],
+  categories = [],
   onSubmit,
   loading = false,
   draft = null
 }: AddCatalogueDrawerProps) => {
-  const [form, setForm] = useState<CatalogueFormData>({
-    id_collaborateur: '',
-    libelle: '',
-    categorie: '',
-    description: '',
-    prix_initial_actuel: '',
-    marge_actuelle: ''
-  })
-
-  const [hasDirtyFields, setHasDirtyFields] = useState(false)
+  const [form, setForm] = useState<CatalogueFormData>({ ...emptyForm })
   const [showConfirmClose, setShowConfirmClose] = useState(false)
+
+  const collaborateurOptions = useMemo(
+    () => collaborateurs.map(c => ({ value: String(c.id_collaborateur), label: c.nom })),
+    [collaborateurs]
+  )
+
+  const categoryOptions = useMemo(
+    () => categories.map(category => ({ value: category, label: category })),
+    [categories]
+  )
 
   useEffect(() => {
     if (open && draft) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(draft)
-      setHasDirtyFields(true)
     }
   }, [open, draft])
 
-  useEffect(() => {
-    const initialForm: CatalogueFormData = {
-      id_collaborateur: '',
-      libelle: '',
-      categorie: '',
-      description: '',
-      prix_initial_actuel: '',
-      marge_actuelle: ''
-    }
-    const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm)
-    setHasDirtyFields(isDirty)
-  }, [form])
+  const hasDirtyFields = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(emptyForm),
+    [form]
+  )
 
   const handleClose = () => {
     if (hasDirtyFields && !loading) {
@@ -84,15 +98,7 @@ const AddCatalogueDrawer = ({
   }
 
   const resetForm = () => {
-    setForm({
-      id_collaborateur: '',
-      libelle: '',
-      categorie: '',
-      description: '',
-      prix_initial_actuel: '',
-      marge_actuelle: ''
-    })
-    setHasDirtyFields(false)
+    setForm({ ...emptyForm })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -139,60 +145,73 @@ const AddCatalogueDrawer = ({
       >
         <form id="create-produit-catalogue-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Collaborateur</label>
-            <select
+            <TypeaheadSelect
+              label="Collaborateur"
+              options={collaborateurOptions}
               value={form.id_collaborateur}
-              onChange={(e) => setForm(prev => ({ ...prev, id_collaborateur: e.target.value }))}
+              onChange={(value) => setForm(prev => ({ ...prev, id_collaborateur: value }))}
+              placeholder="Rechercher un collaborateur…"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Point de vente</label>
+            <select
+              value={form.id_pdv}
+              onChange={(e) => setForm(prev => ({ ...prev, id_pdv: e.target.value }))}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               disabled={loading}
-              required
             >
-              <option value="">Sélectionner</option>
-              {collaborateurs.map(c => (
-                <option key={c.id_collaborateur} value={c.id_collaborateur}>{c.nom}</option>
+              <option value="">Sélectionner (optionnel)</option>
+              {pointsVente.map(pv => (
+                <option key={pv.id_pdv} value={pv.id_pdv}>{pv.nom}</option>
               ))}
             </select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Libellé</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nom du produit</label>
               <input
-                value={form.libelle}
-                onChange={(e) => setForm(prev => ({ ...prev, libelle: e.target.value }))}
+                value={form.nom}
+                onChange={(e) => setForm(prev => ({ ...prev, nom: e.target.value }))}
                 className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 disabled={loading}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Catégorie</label>
-              <input
+              <TypeaheadSelect
+                label="Catégorie"
+                options={categoryOptions}
                 value={form.categorie}
-                onChange={(e) => setForm(prev => ({ ...prev, categorie: e.target.value }))}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                onChange={(value) => setForm(prev => ({ ...prev, categorie: value }))}
+                placeholder="Saisir ou choisir une catégorie…"
                 disabled={loading}
+                allowCustomInput
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Prix initial actuel (Ar)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Unité de mesure</label>
               <input
-                type="number"
-                value={form.prix_initial_actuel}
-                onChange={(e) => setForm(prev => ({ ...prev, prix_initial_actuel: e.target.value }))}
+                value={form.unite}
+                onChange={(e) => setForm(prev => ({ ...prev, unite: e.target.value }))}
+                placeholder="pièce, kg, L, m..."
                 className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Marge actuelle (Ar)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Seuil d&apos;alerte</label>
               <input
                 type="number"
-                value={form.marge_actuelle}
-                onChange={(e) => setForm(prev => ({ ...prev, marge_actuelle: e.target.value }))}
+                value={form.seuil_alerte}
+                onChange={(e) => setForm(prev => ({ ...prev, seuil_alerte: e.target.value }))}
+                placeholder="Quantité minimale avant alerte"
                 className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 disabled={loading}
               />
@@ -213,7 +232,7 @@ const AddCatalogueDrawer = ({
       </Drawer>
 
       {showConfirmClose && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={cancelClose} />
           <div className="relative w-full max-w-md rounded-lg bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 p-6">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Modifications non enregistrées</h3>
@@ -221,7 +240,7 @@ const AddCatalogueDrawer = ({
               Vous avez des modifications non enregistrées. Voulez-vous vraiment quitter le formulaire ?
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-              Les données seront conservées temporairement jusqu'au rechargement de la page.
+              Les données seront conservées temporairement jusqu&apos;au rechargement de la page.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button

@@ -10,7 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/ventes': 'Ventes',
   '/collaborateurs': 'Collaborateurs',
   '/finance/transactions': 'Transactions',
-  '/config': 'Paramètres',
+  '/settings': 'Paramètres',
 }
 
 export default function AdminRouteLayout({ children }: { children: React.ReactNode }) {

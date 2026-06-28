@@ -11,7 +11,7 @@ export const GET = withAuth(
     })
     return NextResponse.json(data)
   },
-  'COLLABORATEURS',
+  'COLLAB',
   'read'
 )
 
@@ -21,6 +21,6 @@ export const POST = withAuth(
     const result = await createCollaborateur({ body, tenantId })
     return NextResponse.json(result, { status: 201 })
   },
-  'COLLABORATEURS',
+  'COLLAB',
   'write'
 )

@@ -5,6 +5,7 @@ import ResponsiveDataTable from '@/components/ResponsiveDataTable/ResponsiveData
 import TabBox from '@/components/TabBox/TabBox'
 import MultiSelectTags from '@/components/MultiSelectTags'
 import Drawer from '@/components/Drawer/Drawer'
+import Modal from '@/components/Modal/Modal'
 import StockAdjustModal from '@/components/Stock/StockAdjustModal'
 import { useToast } from '@/components/Toast/ToastContainer'
 import DateRangeFilter from '@/components/DateRangeFilter'
@@ -23,7 +24,7 @@ export default function StockPage() {
   const dispatch = useAppDispatch()
   const livraisonsState = useAppSelector(state => state.livraisons)
 
-  const [loadingLists, setLoadingLists] = useState(false)
+  const [, setLoadingLists] = useState(false)
   const [collaborateurs, setCollaborateurs] = useState<AnyRecord[]>([])
   const [pointsDeVente, setPointsDeVente] = useState<AnyRecord[]>([])
   const [produitsCatalogue, setProduitsCatalogue] = useState<AnyRecord[]>([])
@@ -35,6 +36,7 @@ export default function StockPage() {
   const [lotsLoading, setLotsLoading] = useState(false)
   const [lotsSortConfig, setLotsSortConfig] = useState({ field: '', direction: '' })
   const [livraisonsSortConfig, setLivraisonsSortConfig] = useState({ field: '', direction: '' })
+  const [showLotsAdvancedFilters, setShowLotsAdvancedFilters] = useState(false)
 
   const [lotsFilters, setLotsFilters] = useState({
     q: '',
@@ -48,31 +50,31 @@ export default function StockPage() {
   const [catalogueStock, setCatalogueStock] = useState<AnyRecord[]>([])
   const [catalogueStockLoading, setCatalogueStockLoading] = useState(false)
 
-  const [livraisonsFilters, setLivraisonsFilters] = useState({
+  const [livraisonsFilters] = useState({
     q: '',
     id_point_vente: '',
     id_collaborateur: '',
     date: null as AnyRecord | null
   })
 
+  const [catalogueFilterCollab, setCatalogueFilterCollab] = useState('')
   const [catalogueOpen, setCatalogueOpen] = useState(false)
   const [catalogueLoading, setCatalogueLoading] = useState(false)
   const [catalogueDraft, setCatalogueDraft] = useState<AnyRecord | null>(null)
 
   const [livraisonOpen, setLivraisonOpen] = useState(false)
-  const [livraisonLoading, setLivraisonLoading] = useState(false)
-  const [livraisonKeepManual, setLivraisonKeepManual] = useState(false)
-  const [livraisonDraft, setLivraisonDraft] = useState<AnyRecord | null>(null)
 
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddInitialCollab, setQuickAddInitialCollab] = useState('')
-  const [quickAddTargetLotIndex, setQuickAddTargetLotIndex] = useState<number | null>(null)
   const [quickAddLoading, setQuickAddLoading] = useState(false)
-  const [quickAddProduitId, setQuickAddProduitId] = useState<number | null>(null)
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailType, setDetailType] = useState<string | null>(null)
   const [detailData, setDetailData] = useState<AnyRecord | null>(null)
+  const [editSeuilOpen, setEditSeuilOpen] = useState(false)
+  const [editSeuilLoading, setEditSeuilLoading] = useState(false)
+  const [editSeuilProduit, setEditSeuilProduit] = useState<AnyRecord | null>(null)
+  const [editSeuilValue, setEditSeuilValue] = useState('')
 
   const [ajustOpen, setAjustOpen] = useState(false)
   const [ajustLoading, setAjustLoading] = useState(false)
@@ -84,10 +86,29 @@ export default function StockPage() {
 
   const produitsCatalogueOptions = useMemo(() => {
     return produitsCatalogue.map(p => ({
-      value: String(p.id_produit_catalogue),
-      label: p.libelle || p.nom || `Produit #${p.id_produit_catalogue}`
+      value: String(p.id_produit),
+      label: p.nom || `Produit #${p.id_produit}`,
+      id_collaborateur: p.id_collaborateur,
     }))
   }, [produitsCatalogue])
+
+  const produitCategories = useMemo(() => {
+    return Array.from(
+      new Set(
+        produitsCatalogue
+          .map(p => String(p.categorie || '').trim())
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b, 'fr'))
+  }, [produitsCatalogue])
+
+  const hasLotsAdvancedFilters = Boolean(
+    lotsFilters.id_point_vente.length > 0 ||
+    lotsFilters.id_collaborateur.length > 0 ||
+    lotsFilters.qte_op ||
+    lotsFilters.qte_value ||
+    lotsFilters.date
+  )
 
   const openDetail = (type: string, row: AnyRecord) => {
     setDetailType(type)
@@ -118,6 +139,32 @@ export default function StockPage() {
   const openAjustement = (lot: AnyRecord) => {
     setAjustLot(lot)
     setAjustOpen(true)
+  }
+
+  const openEditSeuil = (produit: AnyRecord) => {
+    setEditSeuilProduit(produit)
+    setEditSeuilValue(produit?.seuil_alerte != null ? String(produit.seuil_alerte) : '')
+    setEditSeuilOpen(true)
+  }
+
+  const handleSaveSeuil = async () => {
+    if (!editSeuilProduit?.id) return
+    setEditSeuilLoading(true)
+    try {
+      await api.patch(`/produits/${editSeuilProduit.id}`, {
+        seuil_alerte: editSeuilValue === '' ? null : Number(editSeuilValue)
+      })
+      showToast('Seuil mis à jour', 'success')
+      setEditSeuilOpen(false)
+      setEditSeuilProduit(null)
+      setEditSeuilValue('')
+      await Promise.all([refreshLists(), refreshStockTables()])
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } }; message?: string }
+      showToast(err?.response?.data?.error || err?.message || 'Erreur lors de la mise à jour du seuil', 'error')
+    } finally {
+      setEditSeuilLoading(false)
+    }
   }
 
   const handleSubmitAjustement = async (form: AnyRecord) => {
@@ -156,29 +203,25 @@ export default function StockPage() {
     try {
       const payload = {
         id_collaborateur: Number(form.id_collaborateur),
-        libelle: form.nom.trim(),
+        nom: form.nom.trim(),
         categorie: form.categorie.trim() || null,
-        unite_mesure: form.unite_mesure.trim() || null,
+        unite: form.unite_mesure?.trim() || form.unite?.trim() || null,
         seuil_alerte: form.seuil_alerte ? Number(form.seuil_alerte) : null,
         description: null,
-        prix_initial_actuel: null,
-        marge_actuelle: null
       }
       const { data: created } = await api.post('/produits', payload)
       const createdProduit = {
-        id_produit_catalogue: created.id_produit_catalogue,
+        id_produit: created.id_produit,
         id_collaborateur: created.id_collaborateur,
-        libelle: created.libelle,
+        nom: created.nom,
         description: created.description,
         categorie: created.categorie,
-        prix_initial_actuel: created.prix_initial_actuel,
-        marge_actuelle: created.marge_actuelle,
+        unite: created.unite,
         statut: created.statut,
         date_creation: created.date_creation,
         date_update: created.date_update
       }
       setProduitsCatalogue(prev => [createdProduit, ...prev])
-      setQuickAddProduitId(createdProduit.id_produit_catalogue)
       showToast('Produit catalogue créé', 'success')
       setQuickAddOpen(false)
     } catch {
@@ -210,7 +253,9 @@ export default function StockPage() {
   const refreshStockTables = async () => {
     setCatalogueStockLoading(true)
     try {
-      const { data: catalogueRes } = await api.get('/stock/catalogue')
+      const params: AnyRecord = {}
+      if (catalogueFilterCollab) params.id_collaborateur = catalogueFilterCollab
+      const { data: catalogueRes } = await api.get('/stock/catalogue', { params })
       setCatalogueStock(catalogueRes?.data || catalogueRes || [])
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
@@ -223,41 +268,77 @@ export default function StockPage() {
   const catalogueRows = useMemo(() => {
     if (!Array.isArray(catalogueStock)) return []
     return catalogueStock.map(p => ({
-      id: p.id_produit_catalogue,
-      libelle: p.libelle || 'Sans nom',
+      id: p.id_produit,
+      libelle: p.libelle || p.nom || 'Sans nom',
       categorie: p.categorie || 'Sans catégorie',
       quantite_en_stock: Number(p.quantite_en_stock ?? 0),
       seuil_alerte: p.seuil_alerte ?? null,
       statut: p.statut || 'actif',
       prix_vente_actuel: p.prix_vente_actuel ?? null,
-      prix_achat_actuel: p.prix_achat_actuel ?? null
+      prix_achat_actuel: p.prix_achat_actuel ?? null,
+      id_collaborateur: p.id_collaborateur,
+      collaborateur_nom: p.collaborateur_nom || 'Collaborateur -',
+      unite: p.unite || ''
     }))
   }, [catalogueStock])
 
   const catalogueColumns = [
-    { field: 'libelle', headerName: 'Produit', width: '200px', minWidth: '150px', sortable: true, filterable: true },
-    { field: 'categorie', headerName: 'Catégorie', width: '150px', minWidth: '120px', sortable: true, filterable: true },
-    { field: 'quantite_en_stock', headerName: 'Stock', width: '100px', minWidth: '80px', sortable: true },
-    { field: 'seuil_alerte', headerName: 'Seuil', width: '100px', minWidth: '80px', sortable: true },
-    { field: 'actions', headerName: 'Actions', width: '100px', minWidth: '80px', sortable: true, filterable: true }
+    {
+      field: 'libelle', headerName: 'Produit', width: '220px', minWidth: '180px', sortable: true, filterable: true,
+      renderCell: (row: AnyRecord) => (
+        <div className="flex flex-col gap-1">
+          <div className="font-medium text-slate-900 dark:text-white truncate" title={row.libelle || 'Sans nom'}>
+            {row.libelle || 'Sans nom'}
+          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{row.collaborateur_nom || 'Collaborateur -'}</span>
+        </div>
+      )
+    },
+    { field: 'categorie', headerName: 'Catégorie', width: '130px', minWidth: '100px', sortable: true, filterable: true },
+    {
+      field: 'stock_seuil', headerName: 'Stock / Seuil', width: '140px', minWidth: '120px', sortable: true,
+      renderCell: (row: AnyRecord) => {
+        const qty = row.quantite_en_stock || 0
+        const seuil = row.seuil_alerte
+        const isAlert = seuil != null && qty <= Number(seuil)
+        return (
+          <div className="flex flex-col gap-0.5 text-xs">
+            <div className={`font-medium ${isAlert ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
+              {qty.toLocaleString('fr-FR')}{row.unite ? ` ${row.unite}` : ''}
+            </div>
+            <div className="text-slate-500 dark:text-slate-400">
+              Seuil: {seuil != null ? Number(seuil).toLocaleString('fr-FR') : '-'}
+            </div>
+          </div>
+        )
+      }
+    },
+    {
+      field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
+      getActions: (row: AnyRecord) => [
+        { label: 'Voir détails', onClick: () => openDetail('catalogue', row) },
+        { label: 'Modifier le seuil', onClick: () => openEditSeuil(row) }
+      ]
+    }
   ]
 
   const handleCreateProduitCatalogue = async (form: AnyRecord) => {
     if (!form.id_collaborateur) { showToast('Sélectionne un collaborateur', 'info'); return }
-    if (!form.libelle.trim()) { showToast('Le libellé est requis', 'info'); return }
+    if (!form.nom?.trim() && !form.libelle?.trim()) { showToast('Le nom du produit est requis', 'info'); return }
     setCatalogueLoading(true)
     try {
       await api.post('/produits', {
         id_collaborateur: Number(form.id_collaborateur),
-        libelle: form.libelle.trim(),
-        categorie: form.categorie.trim() || null,
-        description: form.description.trim() || null,
-        prix_initial_actuel: form.prix_initial_actuel === '' ? null : Number(form.prix_initial_actuel),
-        marge_actuelle: form.marge_actuelle === '' ? null : Number(form.marge_actuelle)
+        nom: (form.nom || form.libelle || '').trim(),
+        categorie: form.categorie?.trim() || null,
+        description: form.description?.trim() || null,
+        unite: form.unite?.trim() || null,
+        seuil_alerte: form.seuil_alerte != null && form.seuil_alerte !== '' ? Number(form.seuil_alerte) : null
       })
       showToast('Produit ajouté au catalogue', 'success')
       setCatalogueOpen(false)
       await refreshLists()
+      await refreshStockTables()
     } catch (e2: unknown) {
       const err = e2 as { response?: { data?: { error?: string } }; message?: string }
       showToast(err?.response?.data?.error || err?.message || 'Erreur création produit', 'info')
@@ -271,58 +352,19 @@ export default function StockPage() {
     if (draft) setCatalogueDraft(draft)
   }
 
-  const handleCreateLivraison = async (form: AnyRecord) => {
-    if (!form.id_collaborateur) { showToast('Sélectionne un collaborateur', 'info'); return }
-    if (!form.id_point_vente) { showToast('Sélectionne un point de vente', 'info'); return }
-    if (!form.date_livraison) { showToast('La date de livraison est requise', 'info'); return }
-    if (!Array.isArray(form.lots) || form.lots.length === 0) { showToast('Ajoute au moins un lot', 'info'); return }
-    for (const lot of form.lots) {
-      if (!String(lot.id_produit_catalogue || '').trim()) {
-        showToast("Chaque lot doit avoir un produit catalogue sélectionné", 'info'); return
-      }
-      if (lot.prix_initial === '' || lot.marge === '' || lot.quantite_initiale === '') {
-        showToast('Prix, marge et quantité sont requis pour chaque lot', 'info'); return
-      }
-    }
-    setLivraisonLoading(true)
-    try {
-      await api.post('/livraisons', {
-        header: {
-          id_collaborateur: Number(form.id_collaborateur),
-          id_point_vente: Number(form.id_point_vente),
-          date: form.date_livraison,
-          reference: form.reference || null,
-          commentaire: form.commentaire || null
-        },
-        lines: form.lots.map((lot: AnyRecord) => ({
-          id_produit_catalogue: lot.id_produit_catalogue || null,
-          nom: lot.libelle || '',
-          prix_initial: Number(lot.prix_initial || 0),
-          marge: Number(lot.marge || 0),
-          qty: Number(lot.quantite_initiale || 0),
-          description: lot.description || null
-        }))
-      })
-      showToast('Livraison créée', 'success')
-      setLivraisonOpen(false)
-      await refreshLists()
-      await fetchLots({ page: 1 })
-    } catch (e2: unknown) {
-      const err = e2 as { response?: { data?: { error?: string } }; message?: string }
-      showToast(err?.response?.data?.error || err?.message || 'Erreur création livraison', 'info')
-    } finally {
-      setLivraisonLoading(false)
-    }
-  }
-
-  const handleCloseLivraisonDrawer = (draft?: AnyRecord) => {
+  const handleCloseLivraisonDrawer = () => {
     setLivraisonOpen(false)
-    if (draft) setLivraisonDraft(draft)
   }
 
-  const handleQuickAddClick = (lotIndex: number, collabId: string | number) => {
-    setQuickAddTargetLotIndex(lotIndex)
-    setQuickAddInitialCollab(collabId ? String(collabId) : '')
+  const handleLivraisonSyncSuccess = async () => {
+    showToast('Livraison synchronisée', 'success')
+    await refreshLists()
+    await fetchLots({ page: 1 })
+    fetchLivraisonsList({ page: 1 })
+  }
+
+  const handleQuickAddClick = () => {
+    setQuickAddInitialCollab('')
     setQuickAddOpen(true)
   }
 
@@ -374,6 +416,11 @@ export default function StockPage() {
     refreshStockTables()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    refreshStockTables()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogueFilterCollab])
 
   const lotsColumns = [
     {
@@ -471,54 +518,66 @@ export default function StockPage() {
             content: (
               <div className="space-y-4">
                 <div className="flex flex-col gap-3 mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div className="md:col-span-2">
+                  <div className="flex flex-col md:flex-row gap-3 md:items-end">
+                    <div className="flex-1">
                       <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Recherche</label>
                       <input type="text" placeholder="Rechercher un lot..." value={lotsFilters.q}
                         onChange={(e) => setLotsFilters(prev => ({ ...prev, q: e.target.value }))}
                         className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500" />
                     </div>
-                    <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowLotsAdvancedFilters(prev => !prev)}
+                      className="inline-flex items-center justify-center gap-2 h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors whitespace-nowrap"
+                    >
+                      <svg className={`w-4 h-4 transition-transform ${showLotsAdvancedFilters ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      Filtres avancés
+                    </button>
+                  </div>
+                  {showLotsAdvancedFilters && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div>
                       <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Points de vente</label>
-                      <MultiSelectTags options={pointsDeVente.map(pv => ({ value: String(pv.id_point_vente), label: pv.nom }))}
+                      <MultiSelectTags options={pointsDeVente.map(pv => ({ value: String(pv.id_pdv), label: pv.nom }))}
                         value={lotsFilters.id_point_vente} onChange={(val) => setLotsFilters(prev => ({ ...prev, id_point_vente: val }))}
                         placeholder="Tous les PV" />
-                    </div>
-                    <div>
+                      </div>
+                      <div>
                       <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Collaborateurs</label>
                       <MultiSelectTags options={collaborateurs.map(c => ({ value: String(c.id_collaborateur), label: c.nom }))}
                         value={lotsFilters.id_collaborateur} onChange={(val) => setLotsFilters(prev => ({ ...prev, id_collaborateur: val }))}
                         placeholder="Tous les collaborateurs" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Quantité</label>
-                        <select value={lotsFilters.qte_op} onChange={(e) => setLotsFilters(prev => ({ ...prev, qte_op: e.target.value }))}
-                          className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
-                          <option value="">Opérateur</option><option value="=">=</option><option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">&gt;=</option><option value="<=">&lt;=</option>
-                        </select>
                       </div>
-                      <div className="flex-1">
-                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Valeur</label>
-                        <input type="number" placeholder="Valeur" value={lotsFilters.qte_value}
-                          onChange={(e) => setLotsFilters(prev => ({ ...prev, qte_value: e.target.value }))}
-                          className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500" />
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Quantité</label>
+                          <select value={lotsFilters.qte_op} onChange={(e) => setLotsFilters(prev => ({ ...prev, qte_op: e.target.value }))}
+                            className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                            <option value="">Opérateur</option><option value="=">=</option><option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">&gt;=</option><option value="<=">&lt;=</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Valeur</label>
+                          <input type="number" placeholder="Valeur" value={lotsFilters.qte_value}
+                            onChange={(e) => setLotsFilters(prev => ({ ...prev, qte_value: e.target.value }))}
+                            className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500" />
+                        </div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Période</label>
+                        <DateRangeFilter value={lotsFilters.date} onChange={(val) => setLotsFilters(prev => ({ ...prev, date: val }))} />
+                      </div>
+                      <div className="flex items-end">
+                        <button type="button" onClick={() => setLotsFilters({ q: '', id_point_vente: [], id_collaborateur: [], qte_op: '', qte_value: '', date: null })}
+                          className="w-full h-[42px] px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors">
+                          Réinitialiser
+                        </button>
                       </div>
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Période</label>
-                      <DateRangeFilter value={lotsFilters.date} onChange={(val) => setLotsFilters(prev => ({ ...prev, date: val }))} />
-                    </div>
-                    <div className="flex items-end">
-                      <button type="button" onClick={() => setLotsFilters({ q: '', id_point_vente: [], id_collaborateur: [], qte_op: '', qte_value: '', date: null })}
-                        className="w-full h-[42px] px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors">
-                        Réinitialiser
-                      </button>
-                    </div>
-                  </div>
-                  {(lotsFilters.q || lotsFilters.id_point_vente.length > 0 || lotsFilters.id_collaborateur.length > 0 || lotsFilters.qte_op || lotsFilters.date) && (
+                  )}
+                  {(lotsFilters.q || hasLotsAdvancedFilters) && (
                     <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
                       <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Filtres actifs :</span>
                       {lotsFilters.q && (
@@ -528,7 +587,7 @@ export default function StockPage() {
                         </span>
                       )}
                       {lotsFilters.id_point_vente.map(pvId => {
-                        const pv = pointsDeVente.find(p => String(p.id_point_vente) === pvId)
+                        const pv = pointsDeVente.find(p => String(p.id_pdv) === pvId)
                         return pv ? (
                           <span key={pvId} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-primary/15">
                             PV: {pv.nom}
@@ -598,7 +657,20 @@ export default function StockPage() {
             label: 'Catalogue',
             content: (
               <div className="space-y-4 -mx-4 md:mx-0">
-                <div className="flex justify-end mb-2 px-4 md:px-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2 px-4 md:px-0">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Collaborateur :</label>
+                    <select
+                      value={catalogueFilterCollab}
+                      onChange={(e) => setCatalogueFilterCollab(e.target.value)}
+                      className="h-[36px] px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    >
+                      <option value="">Tous</option>
+                      {collaborateurs.map(c => (
+                        <option key={c.id_collaborateur} value={c.id_collaborateur}>{c.nom}</option>
+                      ))}
+                    </select>
+                  </div>
                   <button type="button" onClick={() => setCatalogueOpen(true)}
                     className="px-3 md:px-4 py-2 bg-primary hover:bg-primary-strong text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
                     Ajouter au catalogue
@@ -617,19 +689,82 @@ export default function StockPage() {
       />
 
       <AddCatalogueDrawer open={catalogueOpen} onClose={handleCloseCatalogueDrawer} collaborateurs={collaborateurs as { id_collaborateur: string | number; nom: string }[]}
+        pointsVente={pointsDeVente as { id_pdv: string | number; nom: string }[]}
+        categories={produitCategories}
         onSubmit={handleCreateProduitCatalogue as (form: Parameters<typeof handleCreateProduitCatalogue>[0]) => void} loading={catalogueLoading} draft={catalogueDraft as never} />
 
-      <QuickAddProduitModal open={quickAddOpen} onClose={() => { setQuickAddOpen(false); setQuickAddTargetLotIndex(null) }}
-        collaborateurs={collaborateurs as { id_collaborateur: string | number; nom: string }[]} onSubmit={handleQuickAddProduit as (form: Parameters<typeof handleQuickAddProduit>[0]) => void} loading={quickAddLoading} initialCollab={quickAddInitialCollab} />
+      <QuickAddProduitModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)}
+        collaborateurs={collaborateurs as { id_collaborateur: string | number; nom: string }[]}
+        categories={produitCategories}
+        onSubmit={handleQuickAddProduit as (form: Parameters<typeof handleQuickAddProduit>[0]) => void} loading={quickAddLoading} initialCollab={quickAddInitialCollab} />
 
       <StockAdjustModal open={ajustOpen && !!ajustLot} onClose={() => { if (!ajustLoading) { setAjustOpen(false); setAjustLot(null) } }}
         lot={ajustLot as never} onSubmit={handleSubmitAjustement as (form: Parameters<typeof handleSubmitAjustement>[0]) => void} loading={ajustLoading} />
 
-      <AddLivraisonDrawer open={livraisonOpen} onClose={handleCloseLivraisonDrawer} collaborateurs={collaborateurs as { id_collaborateur: string | number; nom: string }[]}
-        pointsVente={pointsDeVente as { id_point_vente: string | number; nom: string }[]} produitsCatalogue={produitsCatalogueOptions} onSubmit={handleCreateLivraison as (form: Parameters<typeof handleCreateLivraison>[0]) => void}
-        onQuickAddClick={handleQuickAddClick} loading={livraisonLoading} draft={livraisonDraft as never}
-        keepManual={livraisonKeepManual} onKeepManualChange={setLivraisonKeepManual}
-        quickAddTargetLotIndex={quickAddTargetLotIndex} quickAddProduitId={quickAddProduitId} />
+      <AddLivraisonDrawer open={livraisonOpen} onClose={handleCloseLivraisonDrawer}
+        collaborateurs={collaborateurs as { id_collaborateur: string | number; nom: string }[]}
+        pointsVente={pointsDeVente as { id_pdv: string | number; nom: string }[]}
+        produitsCatalogue={produitsCatalogueOptions}
+        onQuickAddClick={handleQuickAddClick}
+        onSyncSuccess={handleLivraisonSyncSuccess}
+        onSyncError={(msg) => showToast(msg, 'info')}
+      />
+
+      <Modal
+        open={editSeuilOpen}
+        title={editSeuilProduit ? `Modifier le seuil • ${editSeuilProduit.libelle}` : 'Modifier le seuil'}
+        onClose={() => {
+          if (!editSeuilLoading) {
+            setEditSeuilOpen(false)
+            setEditSeuilProduit(null)
+            setEditSeuilValue('')
+          }
+        }}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!editSeuilLoading) {
+                  setEditSeuilOpen(false)
+                  setEditSeuilProduit(null)
+                  setEditSeuilValue('')
+                }
+              }}
+              disabled={editSeuilLoading}
+              className="px-3 md:px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveSeuil}
+              disabled={editSeuilLoading}
+              className="px-3 md:px-4 py-2 bg-primary hover:bg-primary-strong text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {editSeuilLoading ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Seuil d&apos;alerte</label>
+            <input
+              type="number"
+              min="0"
+              value={editSeuilValue}
+              onChange={(e) => setEditSeuilValue(e.target.value)}
+              placeholder="Laisser vide pour aucun seuil"
+              disabled={editSeuilLoading}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            />
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Ce seuil sert à signaler les produits dont le stock devient bas dans le catalogue.
+          </p>
+        </div>
+      </Modal>
 
       <Drawer open={detailOpen && !!detailType && !!detailData} onClose={closeDetail}
         title={detailType === 'lot' ? (detailData?.libelle_produit || 'Détails du lot')
@@ -707,6 +842,7 @@ export default function StockPage() {
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{detailData.libelle}</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">Catégorie : {detailData.categorie || 'Sans catégorie'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Collaborateur : {detailData.collaborateur_nom || 'Collaborateur -'}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><p className="text-xs text-slate-500 dark:text-slate-400">Stock</p><p className="text-slate-900 dark:text-white">{Number(detailData.quantite_en_stock ?? 0).toLocaleString('fr-FR')}</p></div>

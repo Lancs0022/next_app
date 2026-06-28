@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/Toast/ToastContainer'
 
@@ -11,7 +10,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
-  const router = useRouter()
   const { showToast, dismissToast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,8 +19,9 @@ export default function LoginPage() {
     try {
       await login(email, password)
       dismissToast(toastId)
-      showToast('Connexion réussie !', 'success')
-      router.push('/dashboard')
+      showToast('Connexion réussie ! Redirection...', 'success')
+      // Navigation complète pour que le cookie httpOnly soit bien pris en compte par le proxy
+      window.location.assign('/dashboard')
     } catch (err) {
       const e = err as Error
       dismissToast(toastId)
@@ -33,25 +32,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-navy-dark to-navy p-4">
-      <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-lg shadow-xl p-8">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center text-navy-dark font-bold text-3xl">
-            P
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-navy-dark via-navy-dark to-navy p-4 md:p-6">
+      {/* Card */}
+      <div className="w-full max-w-[460px] rounded-2xl shadow-2xl overflow-hidden bg-slate-800">
+
+        {/* Header */}
+        <div className="flex flex-col items-center pt-8 md:pt-12 px-4 md:px-10">
+          {/* Logo */}
+          <div className="w-[72px] h-[72px] rounded-xl flex items-center justify-center shadow-lg bg-primary mb-6">
+            <span className="font-extrabold leading-none text-4xl text-navy-dark">P</span>
           </div>
+
+          <h1 className="font-bold tracking-tight text-2xl text-slate-100 mb-2">
+            PEJAA Admin
+          </h1>
+          <p className="text-sm text-slate-400">
+            Connectez-vous pour continuer
+          </p>
         </div>
 
-        <h1 className="text-2xl font-bold text-center text-navy-dark dark:text-white mb-2">
-          PEJAA Admin
-        </h1>
-        <p className="text-center text-slate-600 dark:text-slate-400 mb-8">
-          Connectez-vous pour continuer
-        </p>
+        {/* Form */}
+        <form onSubmit={handleSubmit} method="post" className="mt-8 px-4 md:px-10">
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          {/* Email field */}
+          <div className="mb-5">
+            <label className="block font-semibold text-[13px] text-slate-300 mb-2">
               Email
             </label>
             <input
@@ -59,14 +64,15 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              className="login-input w-full h-11 rounded-lg px-5 text-sm bg-slate-900 border border-slate-700 text-slate-100 outline-none transition-shadow"
               placeholder="admin@pejaa.com"
               disabled={loading}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          {/* Password field */}
+          <div className="mb-7">
+            <label className="block font-semibold text-[13px] text-slate-300 mb-2">
               Mot de passe
             </label>
             <div className="relative">
@@ -75,15 +81,16 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 pr-12 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                className="login-input w-full h-11 rounded-lg pl-5 pr-12 text-sm bg-slate-900 border border-slate-700 text-slate-100 outline-none transition-shadow"
                 placeholder="••••••••"
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center justify-center w-6 h-6 text-slate-500 transition-colors"
                 disabled={loading}
+                tabIndex={-1}
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,21 +106,41 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Submit button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-primary hover:bg-primary-strong text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="login-btn w-full h-12 rounded-lg font-semibold text-sm bg-primary text-navy-dark mb-8 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Connexion...' : 'Se connecter'}
+            {loading ? (
+              <span className="inline-flex items-center justify-center gap-2">
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Connexion...
+              </span>
+            ) : 'Se connecter'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
-          Comptes de test :<br />
-          <span className="font-mono text-xs">admin@pejaa.com / Pejaa2026</span><br />
-          <span className="font-mono text-xs">employe@pejaa.com / Pejaa2026</span><br />
-          <span className="font-mono text-xs">Lancs0022@gmail.com / Lancs0022</span>
-        </p>
+        {/* Test accounts footer */}
+        <div className="border-t border-slate-700 bg-slate-800/50 px-4 md:px-10 py-5 md:py-6">
+          <p className="text-center font-medium uppercase tracking-wider text-[11px] text-slate-500 mb-3">
+            Comptes de test
+          </p>
+          <div className="flex flex-col items-center gap-1.5">
+            <p className="font-mono text-xs text-slate-400">
+              admin@pejaa.com <span className="text-slate-600">/</span> Pejaa2026
+            </p>
+            <p className="font-mono text-xs text-slate-400">
+              employe@pejaa.com <span className="text-slate-600">/</span> Pejaa2026
+            </p>
+            <p className="font-mono text-xs text-slate-400">
+              Lancs0022@gmail.com <span className="text-slate-600">/</span> Lancs0022
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   )

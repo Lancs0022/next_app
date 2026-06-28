@@ -19,19 +19,21 @@ export async function createEncaissement({
   tenantId: number
 }) {
   const montant = Number(body?.montant)
-  const mode_paiement = String(body?.mode_paiement || '').trim()
-  const id_pdv = Number(body?.id_pdv ?? 0)
+  const mode = String(body?.mode || 'cash').trim()
+  const id_vente = Number(body?.id_vente)
+  const cree_par_id = Number(body?.cree_par_id)
 
   if (!montant || montant <= 0) throw httpError(400, 'Le montant doit être > 0')
-  if (!mode_paiement) throw httpError(400, "'mode_paiement' est requis")
-  if (!id_pdv) throw httpError(400, "'id_pdv' est requis")
+  if (!id_vente) throw httpError(400, "'id_vente' est requis")
+  if (!cree_par_id) throw httpError(400, "'cree_par_id' est requis")
 
   return prisma.encaissement.create({
     data: {
       tenant_id: tenantId,
-      id_pdv,
+      id_vente,
       montant,
-      mode_paiement,
+      mode,
+      cree_par_id,
     },
   })
 }

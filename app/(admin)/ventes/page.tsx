@@ -8,6 +8,8 @@ import DateRangeFilter from '@/components/DateRangeFilter'
 import Drawer from '@/components/Drawer/Drawer'
 import { useToast } from '@/components/Toast/ToastContainer'
 import api from '@/services/api'
+import { getPvId } from '@/lib/pointVente'
+import VenteEntryDrawer from '@/components/Ventes/VenteEntryDrawer'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>
@@ -31,19 +33,11 @@ export default function VentesPage() {
   const [ventesLoading, setVentesLoading] = useState(false)
 
   const [mode, setMode] = useState<'atomique' | 'aggrege'>('atomique')
-  const [lotsDisponibles, setLotsDisponibles] = useState<AnyRecord[]>([])
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailData, setDetailData] = useState<AnyRecord | null>(null)
   const [selectedRow, setSelectedRow] = useState<AnyRecord | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [createLoading, setCreateLoading] = useState(false)
-  const [createForm, setCreateForm] = useState({
-    id_client: '',
-    id_point_vente: '',
-    date_vente: new Date().toISOString().slice(0, 10),
-    lignes: [{ id_lot: '', id_collaborateur: '', quantite: '' }]
-  })
 
   const [preloadedFromStock, setPreloadedFromStock] = useState(false)
 
@@ -60,7 +54,7 @@ export default function VentesPage() {
     try {
       const [cRes, pvRes] = await Promise.all([
         api.get('/collaborateurs'),
-        api.get('/points-de-vente')
+        api.get('/points-de-vente'),
       ])
       setCollaborateurs(cRes.data?.data || cRes.data || [])
       setPointsDeVente(pvRes.data?.data || pvRes.data || [])
@@ -106,32 +100,10 @@ export default function VentesPage() {
   // Handle preloading from stock (via search params)
   useEffect(() => {
     if ((fromLotId || fromPvId) && !preloadedFromStock) {
-      setCreateForm(prev => ({
-        ...prev,
-        id_point_vente: fromPvId || prev.id_point_vente,
-        lignes: prev.lignes && prev.lignes.length > 0
-          ? [{ ...prev.lignes[0], id_lot: fromLotId || '' }, ...prev.lignes.slice(1)]
-          : [{ id_lot: fromLotId || '', id_collaborateur: '', quantite: '' }]
-      }))
       setCreateOpen(true)
       setPreloadedFromStock(true)
     }
   }, [fromLotId, fromPvId, preloadedFromStock])
-
-  // Load lots when create drawer opens with a point de vente
-  useEffect(() => {
-    if (!createOpen || !createForm.id_point_vente) return
-    const loadLots = async () => {
-      try {
-        const { data: res } = await api.get('/stock/lots', { params: { id_point_vente: createForm.id_point_vente, limit: 200 } })
-        setLotsDisponibles(res.data || [])
-      } catch (e: unknown) {
-        const err = e as { response?: { data?: { error?: string } }; message?: string }
-        showToast(err?.response?.data?.error || err?.message || 'Erreur chargement des lots disponibles', 'info')
-      }
-    }
-    loadLots()
-  }, [createOpen, createForm.id_point_vente, showToast])
 
   const handleRowClick = async (row: AnyRecord) => {
     setSelectedRow(row)
@@ -168,35 +140,9 @@ export default function VentesPage() {
     return classes[statut] || 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300'
   }
 
-  const resetCreateForm = () => {
-    setCreateForm({ id_client: '', id_point_vente: '', date_vente: new Date().toISOString().slice(0, 10), lignes: [{ id_lot: '', id_collaborateur: '', quantite: '' }] })
-  }
-
-  const addLigne = () => setCreateForm(prev => ({ ...prev, lignes: [...prev.lignes, { id_lot: '', id_collaborateur: '', quantite: '' }] }))
-  const removeLigne = (index: number) => setCreateForm(prev => prev.lignes.length <= 1 ? prev : { ...prev, lignes: prev.lignes.filter((_, i) => i !== index) })
-  const updateLigne = (index: number, updates: AnyRecord) => setCreateForm(prev => ({ ...prev, lignes: prev.lignes.map((ligne, i) => (i === index ? { ...ligne, ...updates } : ligne)) }))
-
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!createForm.id_point_vente || !createForm.id_client) { showToast('Point de vente et client requis', 'info'); return }
-    if (!Array.isArray(createForm.lignes) || createForm.lignes.length === 0) { showToast('Au moins une ligne de produit est requise', 'info'); return }
-    if (createForm.lignes.some(l => !l.id_lot || !l.id_collaborateur || !l.quantite)) { showToast('Chaque ligne doit avoir un lot, un collaborateur et une quantité', 'info'); return }
-    setCreateLoading(true)
-    try {
-      await api.post('/ventes/directe', {
-        header: { id_point_vente: Number(createForm.id_point_vente), id_client: Number(createForm.id_client), date_vente: createForm.date_vente },
-        lines: createForm.lignes.map(l => ({ id_lot: Number(l.id_lot), id_collaborateur: Number(l.id_collaborateur), quantite: Number(l.quantite) }))
-      })
-      showToast('Vente créée', 'success')
-      setCreateOpen(false)
-      resetCreateForm()
-      fetchVentes({ page: 1 })
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } }; message?: string }
-      showToast(err?.response?.data?.error || err?.message || 'Erreur lors de la création de la vente', 'info')
-    } finally {
-      setCreateLoading(false)
-    }
+  const handleVenteSyncSuccess = () => {
+    showToast('Vente synchronisée', 'success')
+    fetchVentes({ page: 1 })
   }
 
   const handleCloseDetail = () => { setDetailOpen(false); setSelectedRow(null); setDetailData(null) }
@@ -273,16 +219,19 @@ export default function VentesPage() {
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Point de vente</label>
               <select value={filters.id_point_vente} onChange={(e) => setFilters(prev => ({ ...prev, id_point_vente: e.target.value }))}
                 className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
-                <option value="">Tous les points de vente</option>
-                {pointsDeVente.map(pv => <option key={pv.id_point_vente} value={pv.id_point_vente}>{pv.nom}</option>)}
+                <option key="all-pv" value="">Tous les points de vente</option>
+                {pointsDeVente.map(pv => {
+                  const id = getPvId(pv)
+                  return <option key={id} value={id}>{pv.nom}</option>
+                })}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Statut</label>
               <select value={filters.statut} onChange={(e) => setFilters(prev => ({ ...prev, statut: e.target.value }))}
                 className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
-                <option value="">Tous les statuts</option>
-                <option value="en_attente_paiement">En attente</option><option value="payee">Payée</option><option value="annulee">Annulée</option><option value="retournee">Retournée</option>
+                <option key="all-statuts" value="">Tous les statuts</option>
+                <option key="en_attente_paiement" value="en_attente_paiement">En attente</option><option key="payee" value="payee">Payée</option><option key="annulee" value="annulee">Annulée</option><option key="retournee" value="retournee">Retournée</option>
               </select>
             </div>
           </div>
@@ -312,7 +261,7 @@ export default function VentesPage() {
                 </span>
               )}
               {filters.id_point_vente && (() => {
-                const pv = pointsDeVente.find(p => String(p.id_point_vente) === String(filters.id_point_vente))
+                const pv = pointsDeVente.find(p => getPvId(p) === String(filters.id_point_vente))
                 return pv ? (
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-primary/15">
                     PV: {pv.nom}<button onClick={() => setFilters(prev => ({ ...prev, id_point_vente: '' }))} className="hover:text-primary-strong dark:hover:text-primary">×</button>
@@ -427,84 +376,16 @@ export default function VentesPage() {
         </Drawer>
       )}
 
-      {createOpen && (
-        <Drawer open={createOpen} title="Nouvelle vente" onClose={() => { if (!createLoading) setCreateOpen(false) }}
-          footer={
-            <div className="flex items-center justify-end gap-2">
-              <button type="button" onClick={() => { if (!createLoading) setCreateOpen(false) }} disabled={createLoading}
-                className="px-3 md:px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors disabled:opacity-50">Annuler</button>
-              <button type="submit" form="create-vente-form" disabled={createLoading}
-                className="px-3 md:px-4 py-2 bg-primary hover:bg-primary-strong text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
-                {createLoading ? 'Création...' : 'Créer'}
-              </button>
-            </div>
-          }>
-          <form id="create-vente-form" onSubmit={handleCreateSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Point de vente</label>
-                <select value={createForm.id_point_vente} onChange={(e) => setCreateForm(prev => ({ ...prev, id_point_vente: e.target.value }))}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" required disabled={createLoading}>
-                  <option value="">Sélectionner</option>
-                  {pointsDeVente.map(pv => <option key={pv.id_point_vente} value={pv.id_point_vente}>{pv.nom}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">ID client</label>
-                <input type="number" value={createForm.id_client} onChange={(e) => setCreateForm(prev => ({ ...prev, id_client: e.target.value }))}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" required disabled={createLoading} />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Date de vente</label>
-              <input type="date" value={createForm.date_vente} onChange={(e) => setCreateForm(prev => ({ ...prev, date_vente: e.target.value }))}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white" required disabled={createLoading} />
-            </div>
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Lignes de vente</h3>
-                <button type="button" onClick={addLigne} disabled={createLoading}
-                  className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60">
-                  <span className="text-lg leading-none mr-1">+</span><span>Ajouter une ligne</span>
-                </button>
-              </div>
-              <div className="space-y-3">
-                {createForm.lignes.map((ligne, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40">
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Lot / produit</label>
-                      <select value={ligne.id_lot} onChange={(e) => updateLigne(index, { id_lot: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
-                        required disabled={createLoading || !createForm.id_point_vente}>
-                        <option value="">Sélectionner un lot</option>
-                        {lotsDisponibles.map((lot: AnyRecord) => <option key={lot.id_lot} value={lot.id_lot}>{lot.libelle_produit} — {lot.quantite_disponible} dispo</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Collaborateur</label>
-                      <select value={ligne.id_collaborateur} onChange={(e) => updateLigne(index, { id_collaborateur: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm" required disabled={createLoading}>
-                        <option value="">Sélectionner</option>
-                        {collaborateurs.map(c => <option key={c.id_collaborateur} value={c.id_collaborateur}>{c.nom}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">Quantité</label>
-                        {createForm.lignes.length > 1 && (
-                          <button type="button" onClick={() => removeLigne(index)} disabled={createLoading} className="text-xs text-red-500 hover:text-red-600">Supprimer</button>
-                        )}
-                      </div>
-                      <input type="number" min="1" value={ligne.quantite} onChange={(e) => updateLigne(index, { quantite: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm" required disabled={createLoading} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </form>
-        </Drawer>
-      )}
+      <VenteEntryDrawer
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        collaborateurs={collaborateurs.map(c => ({ id_collaborateur: c.id_collaborateur, nom: c.nom }))}
+        pointsVente={pointsDeVente.map(pv => ({ id: getPvId(pv), nom: pv.nom }))}
+        initialPvId={fromPvId || ''}
+        initialLotId={fromLotId || ''}
+        onSyncSuccess={handleVenteSyncSuccess}
+        onSyncError={(msg) => showToast(msg, 'info')}
+      />
     </div>
   )
 }

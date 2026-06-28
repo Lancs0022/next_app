@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth'
-import { listLotsDisponibles, createStockAjustement } from '@/services/stock.service'
+import { listStockActuel, createStockAjustement } from '@/services/stock.service'
 
 const MAX_BODY_SIZE = 1_048_576 // 1 Mo
 
 export const GET = withAuth(
   async (req, _ctx, { tenantId }) => {
     const { searchParams } = req.nextUrl
-    const data = await listLotsDisponibles({
+    const data = await listStockActuel({
       tenantId,
-      id_collaborateur: searchParams.get('id_collaborateur') ?? undefined,
+      id_lot: searchParams.get('id_lot') ?? undefined,
       id_point_vente: searchParams.get('id_point_vente') ?? undefined,
       q: searchParams.get('q') ?? undefined,
       page: Number(searchParams.get('page') ?? 1),

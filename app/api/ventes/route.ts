@@ -7,8 +7,12 @@ export const GET = withAuth(
     const { searchParams } = req.nextUrl
     const data = await listVentes({
       tenantId,
+      q: searchParams.get('q') ?? undefined,
       id_point_vente: searchParams.get('id_point_vente') ?? undefined,
+      id_collaborateur: searchParams.get('id_collaborateur') ?? undefined,
       statut: searchParams.get('statut') ?? undefined,
+      dateMin: searchParams.get('dateMin') ?? undefined,
+      dateMax: searchParams.get('dateMax') ?? undefined,
       page: Number(searchParams.get('page') ?? 1),
       limit: Number(searchParams.get('limit') ?? 50),
     })

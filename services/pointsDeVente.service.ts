@@ -5,7 +5,7 @@ export { httpError }
 
 export async function listPointsDeVente(tenantId: number) {
   const rows = await prisma.pointDeVente.findMany({
-    where: { tenant_id: tenantId, actif: true },
+    where: { tenant_id: tenantId, statut: 'actif' },
     orderBy: { id_pdv: 'desc' },
   })
   return { data: rows }

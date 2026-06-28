@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Modal from '@/components/Modal/Modal'
+import { Z_MODAL_NESTED } from '@/lib/zIndex'
+import TypeaheadSelect from '@/components/TypeaheadSelect'
 
 interface Collaborateur {
   id_collaborateur: string | number
@@ -14,13 +16,13 @@ interface QuickAddFormData {
   categorie: string
   unite_mesure: string
   seuil_alerte: string
-  prix_vente: string
 }
 
 interface QuickAddProduitModalProps {
   open: boolean
   onClose: () => void
   collaborateurs: Collaborateur[]
+  categories?: string[]
   onSubmit: (form: QuickAddFormData) => void
   loading?: boolean
   initialCollab?: string
@@ -29,7 +31,8 @@ interface QuickAddProduitModalProps {
 const QuickAddProduitModal = ({ 
   open, 
   onClose, 
-  collaborateurs, 
+  collaborateurs,
+  categories = [],
   onSubmit,
   loading = false,
   initialCollab = ''
@@ -39,19 +42,28 @@ const QuickAddProduitModal = ({
     nom: '',
     categorie: '',
     unite_mesure: '',
-    seuil_alerte: '',
-    prix_vente: ''
+    seuil_alerte: ''
   })
+
+  const collaborateurOptions = useMemo(
+    () => collaborateurs.map(c => ({ value: String(c.id_collaborateur), label: c.nom })),
+    [collaborateurs]
+  )
+
+  const categoryOptions = useMemo(
+    () => categories.map(category => ({ value: category, label: category })),
+    [categories]
+  )
 
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       id_collaborateur: initialCollab || '',
       nom: '',
       categorie: '',
       unite_mesure: '',
-      seuil_alerte: '',
-      prix_vente: ''
+      seuil_alerte: ''
     })
   }, [open, initialCollab])
 
@@ -70,7 +82,7 @@ const QuickAddProduitModal = ({
     <Modal
       open={open}
       title="Nouveau produit catalogue"
-      zIndex="z-[60]"
+      zIndex={Z_MODAL_NESTED}
       preventBackdropClose={true}
       onClose={handleClose}
       footer={
@@ -96,19 +108,14 @@ const QuickAddProduitModal = ({
     >
       <form id="quick-add-produit-form" onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Collaborateur</label>
-          <select
+          <TypeaheadSelect
+            label="Collaborateur"
+            options={collaborateurOptions}
             value={form.id_collaborateur}
-            onChange={(e) => setForm(prev => ({ ...prev, id_collaborateur: e.target.value }))}
-            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            onChange={(value) => setForm(prev => ({ ...prev, id_collaborateur: value }))}
+            placeholder="Rechercher un collaborateur…"
             disabled={loading}
-            required
-          >
-            <option value="">Sélectionner</option>
-            {collaborateurs.map(c => (
-              <option key={c.id_collaborateur} value={c.id_collaborateur}>{c.nom}</option>
-            ))}
-          </select>
+          />
         </div>
 
         <div>
@@ -124,12 +131,14 @@ const QuickAddProduitModal = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Catégorie</label>
-            <input
+            <TypeaheadSelect
+              label="Catégorie"
+              options={categoryOptions}
               value={form.categorie}
-              onChange={(e) => setForm(prev => ({ ...prev, categorie: e.target.value }))}
-              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              onChange={(value) => setForm(prev => ({ ...prev, categorie: value }))}
+              placeholder="Saisir ou choisir une catégorie…"
               disabled={loading}
+              allowCustomInput
             />
           </div>
 
@@ -146,7 +155,7 @@ const QuickAddProduitModal = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Seuil d'alerte</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Seuil d&apos;alerte</label>
           <input
             type="number"
             value={form.seuil_alerte}

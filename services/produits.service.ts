@@ -5,7 +5,7 @@ export { httpError }
 
 export async function listProduits(tenantId: number) {
   const rows = await prisma.produitCatalogue.findMany({
-    where: { tenant_id: tenantId, actif: true },
+    where: { tenant_id: tenantId, statut: 'actif' },
     orderBy: { id_produit: 'desc' },
   })
   return { data: rows }
@@ -21,17 +21,15 @@ export async function createProduit({
   const nom = String(body?.nom || '').trim()
   if (!nom) throw httpError(400, "Le champ 'nom' est requis")
 
-  const prixAchat = Number(body?.prix_achat ?? 0)
-  const prixVente = Number(body?.prix_vente ?? 0)
-  if (prixAchat < 0 || prixVente < 0) throw httpError(400, 'Les prix doivent être positifs')
-
   const produit = await prisma.produitCatalogue.create({
     data: {
       tenant_id: tenantId,
       nom,
+      id_collaborateur: Number(body.id_collaborateur),
       description: body?.description ? String(body.description) : null,
-      prix_achat: prixAchat,
-      prix_vente: prixVente,
+      categorie: body?.categorie ? String(body.categorie) : null,
+      unite: body?.unite ? String(body.unite) : null,
+      seuil_alerte: body?.seuil_alerte != null ? Number(body.seuil_alerte) : null,
     },
   })
 
@@ -58,10 +56,10 @@ export async function updateProduit({
       nom: body?.nom ? String(body.nom) : existing.nom,
       description:
         body?.description !== undefined ? String(body.description) : existing.description,
-      prix_achat:
-        body?.prix_achat !== undefined ? Number(body.prix_achat) : existing.prix_achat,
-      prix_vente:
-        body?.prix_vente !== undefined ? Number(body.prix_vente) : existing.prix_vente,
+      categorie: body?.categorie !== undefined ? String(body.categorie) : existing.categorie,
+      unite: body?.unite !== undefined ? String(body.unite) : existing.unite,
+      seuil_alerte: body?.seuil_alerte != null ? Number(body.seuil_alerte) : existing.seuil_alerte,
+      id_collaborateur: body?.id_collaborateur != null ? Number(body.id_collaborateur) : existing.id_collaborateur,
     },
   })
 }
@@ -80,7 +78,7 @@ export async function deleteProduit({
 
   return prisma.produitCatalogue.update({
     where: { id_produit: id },
-    data: { actif: false },
+    data: { statut: 'archive' },
   })
 }
 

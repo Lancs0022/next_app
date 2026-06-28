@@ -7,9 +7,14 @@ export const GET = withAuth(
     const { searchParams } = req.nextUrl
     const data = await listLotsDisponibles({
       tenantId,
-      id_collaborateur: searchParams.get('id_collaborateur') ?? undefined,
       id_point_vente: searchParams.get('id_point_vente') ?? undefined,
+      id_collaborateur: searchParams.get('id_collaborateur') ?? undefined,
       q: searchParams.get('q') ?? undefined,
+      qte_op: searchParams.get('qte_op') ?? undefined,
+      qte_value: searchParams.get('qte_value') ?? undefined,
+      dateMin: searchParams.get('dateMin') ?? undefined,
+      dateMax: searchParams.get('dateMax') ?? undefined,
+      date_target: searchParams.get('date_target') ?? undefined,
       page: Number(searchParams.get('page') ?? 1),
       limit: Number(searchParams.get('limit') ?? 50),
     })

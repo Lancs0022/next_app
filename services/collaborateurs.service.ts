@@ -13,7 +13,7 @@ export async function listCollaborateurs(params: CollaborateurQueryParams) {
 
   const where: Record<string, unknown> = { tenant_id: tenantId }
   if (statut) {
-    where.actif = statut === 'actif'
+    where.statut = statut
   }
 
   const rows = await prisma.collaborateur.findMany({

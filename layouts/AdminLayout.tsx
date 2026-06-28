@@ -28,11 +28,18 @@ const AdminLayout = ({
       timeout = setTimeout(() => {
         if (typeof window === 'undefined') return
         const width = window.innerWidth
-        if (width < 1024) {
+        if (width < 540) {
+          // Full mobile: sidebar as overlay
           setIsMobileSidebarMode(true)
           setIsSidebarOverlayOpen(false)
           setIsSidebarCollapsed(false)
+        } else if (width < 768) {
+          // Intermediate: sidebar visible but auto-collapsed to w-20
+          setIsMobileSidebarMode(false)
+          setIsSidebarCollapsed(true)
+          setIsSidebarOverlayOpen(false)
         } else {
+          // Desktop: sidebar normal (user can toggle collapse)
           setIsMobileSidebarMode(false)
           setIsSidebarOverlayOpen(false)
         }
@@ -71,7 +78,7 @@ const AdminLayout = ({
           isSidebarOverlayOpen={isSidebarOverlayOpen}
         />
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
-          <div className="p-10 md:p-10 lg:p-10">0{children}</div>
+          <div className="p-4 md:p-6 lg:p-10">{children}</div>
         </main>
       </div>
       {isMobileSidebarMode && isSidebarOverlayOpen && (
@@ -90,3 +97,4 @@ const AdminLayout = ({
 }
 
 export default AdminLayout
+
