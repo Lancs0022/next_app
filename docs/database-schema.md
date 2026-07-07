@@ -46,7 +46,7 @@ Historique complet de chaque changement de stock.
 | id_stock_mouvement | Int | PK | Auto-increment |
 | tenant_id | Int | NO | |
 | id_lot | Int | NO | FK → livraison_item |
-| type | String | NO | entree, sortie, reservation, annulation_reservation, ajustement, transfert |
+| type | String | NO | entree, sortie, reservation, annulation_reservation, ajustement, transfert, annulation_vente |
 | quantite | Decimal(12,3) | NO | Quantité mouvementée |
 | before_qty | Decimal? | YES | Quantité avant le mouvement |
 | after_qty | Decimal? | YES | Quantité après le mouvement |
@@ -232,6 +232,7 @@ Articles vendus dans une vente.
 | montant_ht, montant_tva, montant_marge | Decimal? | YES | Totaux ligne |
 | deleted | Boolean | NO | false par défaut |
 
+| quantite_retournee | Decimal(12,3) | NO | 0 par défaut — mis à jour uniquement lors d'une annulation de vente (stock_mouvement type='annulation_vente') |
 ## ENCAISSEMENTS
 
 ### encaissement

@@ -32,7 +32,8 @@ export interface SessionMeta {
   date: string
   id_pdv: string
   reference: string
-  commentaire: string
+  comment: string
+  commentaire?: string
   id_client: string
 }
 

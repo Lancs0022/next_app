@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Drawer from '@/components/Drawer/Drawer'
-import SelectWithTags from '@/components/SelectWithTags'
+import TypeaheadSelect from '@/components/TypeaheadSelect'
 import { FormField, formInputClass } from '@/components/FormField'
 import LotSelectionTable from '@/components/Ventes/LotSelectionTable'
 import QuickAddClientModal from '@/components/Ventes/QuickAddClientModal'
@@ -211,7 +211,7 @@ export default function VenteEntryDrawer({
               className={formInputClass}
             />
           </FormField>
-          <SelectWithTags
+          <TypeaheadSelect
             label="Point de vente"
             options={pvOptions}
             value={session.meta.id_pdv}
@@ -222,7 +222,7 @@ export default function VenteEntryDrawer({
             placeholder="Sélectionner"
           />
           <div>
-            <SelectWithTags
+            <TypeaheadSelect
               label="Client"
               options={clientDisplayOptions}
               value={clientAnonymous ? ANONYMOUS_VALUE : session.meta.id_client}
@@ -243,13 +243,12 @@ export default function VenteEntryDrawer({
               Client anonyme
             </label>
           </div>
-          <SelectWithTags
+          <TypeaheadSelect
             label="Collaborateur"
             options={collabOptions}
             value={session.filterCollaborateur}
             onChange={session.setFilterCollaborateur}
             placeholder="Tous les collaborateurs"
-            allowEmpty
           />
         </div>
 

@@ -101,3 +101,68 @@ export async function updateProduitImage({
     data: { image_url: imageUrl },
   })
 }
+
+export async function listAggregatedProduits(tenantId: number) {
+  const produits = await prisma.produitCatalogue.findMany({
+    where: { tenant_id: tenantId, statut: 'actif' },
+    select: {
+      id_produit: true,
+      nom: true,
+      description: true,
+      categorie: true,
+      unite: true,
+      image_url: true,
+    },
+  });
+
+  const aggregatedData = await Promise.all(
+    produits.map(async (produit) => {
+      // Available Quantity
+      const stock = await prisma.stockActuel.aggregate({
+        _sum: {
+          quantite: true,
+        },
+        where: {
+          tenant_id: tenantId,
+          id_lot: {
+            in: (await prisma.livraisonItem.findMany({
+              where: { id_produit: produit.id_produit, statut: 'en_stock' },
+              select: { id_lot: true },
+            })).map((item) => item.id_lot),
+          },
+        },
+      });
+      const availableQuantity = stock._sum.quantite?.toNumber() || 0;
+
+      // Average Cost (from LivraisonItem)
+      const livraisonItems = await prisma.livraisonItem.findMany({
+        where: { id_produit: produit.id_produit, tenant_id: tenantId },
+        select: { prix_initial: true },
+      });
+      const totalCost = livraisonItems.reduce((sum, item) => sum + item.prix_initial.toNumber(), 0);
+      const averageCost = livraisonItems.length > 0 ? totalCost / livraisonItems.length : 0;
+
+      // Sales Price (from VenteArticle, assuming prix_initial + marge is the sales price)
+      const venteArticles = await prisma.venteArticle.findMany({
+        where: { id_lot: {
+          in: (await prisma.livraisonItem.findMany({
+            where: { id_produit: produit.id_produit },
+            select: { id_lot: true },
+          })).map((item) => item.id_lot),
+        }, tenant_id: tenantId },
+        select: { prix_initial: true, marge: true },
+      });
+      const totalSalesPrice = venteArticles.reduce((sum, item) => sum + item.prix_initial.toNumber() + item.marge.toNumber(), 0);
+      const averageSalesPrice = venteArticles.length > 0 ? totalSalesPrice / venteArticles.length : 0;
+
+      return {
+        ...produit,
+        availableQuantity,
+        averageCost: averageCost.toFixed(2),
+        salesPrice: averageSalesPrice.toFixed(2),
+      };
+    })
+  );
+
+  return { data: aggregatedData };
+}

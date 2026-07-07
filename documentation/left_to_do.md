@@ -180,5 +180,68 @@ React Component: DynamicEntryMetricsBar
 HTML Element: <div class="bg-slate-800 border-t border-slate-700 px-4 py-2.5 flex flex-wrap items-center gap-6 shrink-0" data-cursor-element-id="cursor-el-1">Total articles: 4 Coût initial total: 12 000 Ar Profit potentiel estimé: 1 200 Ar</div> doit être calculé en fonction de toutes les produits à travers les différents onglets et non juste pour l'onglet actuel. Les toasts de confirmations attestant une livraison effectué doit se mettre en premier plan. Là il apparaît juste derrière l'écran de saisie globale des livraisons et on ne vois pas visuellement si ça a bien été enregistré ou non.
 Je me rends compte que les SelectWithTags ne sont pas comme je les voudrais. Ah je m'en souviens maintenant. Au faite je veux TypeaheadSelect au lieu de SelectWithTags. Je veux un champ où l'on peut chercher la valeur en tapant des caractères parmis ceux qui sont en option. 
 Au niveau du champ saisie globale des ventes, j'aimerais savoir à quoi correspond le champ Réduc. et ses propriétés. Le toast d'enregistrement est caché ici aussi. Il faut arranger ça. Et j'ai ces issues : "## Error Type
-## Error Message
+ Error Message
 Encountered two children with the same key, `40`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version avec plusieurs éléments. 
+
+## Wave 4
+- Au niveau du saisie global des livraisons, les selectwithtags n'ont pas été échangés contre des typeheadselect. Incluant le modal pour "Ajouter un collaborateur"
+- Lorsque le side bar est plié, les menus Stock, ventes ; ceux avec des sous menus ont des comportements anormaux. Lorsqu'on appuie dessus une erreur survient : "Runtime Error
+Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+
+layouts/Sidebar.tsx (196:5) @ Sidebar.useLayoutEffect
+
+  194 |     const pos = positionAnchor(flyout.id)
+  195 |     if (!pos) return
+> 196 |     setFlyout(prev => prev ? { ...prev, top: pos.top, left: pos.left } : null)
+      |     ^
+  197 |   }, [flyout, isOpen, positionAnchor])
+  198 |
+  199 |   useEffect(() => {
+
+Call Stack 131
+Show 128 ignore-listed frame(s)
+Sidebar.useLayoutEffect" Normalement de base quand on appuie sur un menu du side bar plié, ça se déplie et affiche les sous menus mais ici ce n'est pas le cas. Pour stock par exemple il y a les sous menus "Stock / Lots" et "Mouvements de stock"
+- Il manque des champs de saisie qu'il faut ajouter dans la saisie globale des livraisons. Il faut ajouter un champ commentaire lié à livraison.commentaire et un champ référence prérempli par la date et heure actuelle pour la valeur par défaut.
+
+### Ajout massif pour la vue de produit_catalogue.
+- Petit modif pour Stock/lots / catalogue. Ici tous les produits catalogue sont regroupés. Ce que je veux c'est de pouvoir consulter tous les lots dans la table stock actuel qui sont tous du même produit catalogue que celui qui est séléctionné. On pourra alors voir de là combien de lot sont en circulation pour ce produit catalogue en particulier. On pourra voir comme informations : Prix initial et marge (livraison_item.prix_initial, marge), point de vente, identifiant de livraison (livraison_item.id_livraison), quantité actuel (stock_actuel.quantite) Slash "/" livraison_item.quantite_initiale. Quand on clique sur une ligne du tableau catalogue, on affiche un drawer plein écran qui montre dans des cards ou des lignes les informations précisés précédemment et des infos jugés utiles. Quand on ouvre 1 de ces lignes ou card, on tombe sur un modal qui affiche les informations relatif au lot : D'abord dans un premier text field, on affiche les infos lié au produit : infos catalogue comme le nom du produit produit_catalogue.nom et l'identifiant produit_catalogue.id_produit ou mettre ça en titre pourquoi pas ; Afficher le nom du collaborateur à l'aide de produit_catalogue.id_collaborateur ; afficher la catégorie du produit à l'aide de produit_catalogue.categorie ; afficher la description textuelle produit_catalogue.description. Afficher la date de création (produit_catalogue.created_at) et le créateur produit_catalogue.created_by (c'est un identifiant et il faut trouver l'user dans utilisateur.id_utilisateur).
+Deuxièmement dans un nouveau text field, afficher les informations relatif au livraison comme l'id de livraison, l'id livraison item, la date d'arrivée, le point de vente de déstination (livraison.id_pdv ou stock_actuel.id_pdv), create_by et created_at dans livraison item.
+Dans un dernier text field, le prix inital dans livraison_item avec la marge, la quantité initial de livraison item slash / quantité actuel dans stock_actuel. Puis il faut montrer combien d'argent ce lot a réussi à générer. 
+- Il faut mettre les quantités / quantités dans des badges et le nom des collaborateurs aussi pour les rendre facile à repérer. 
+- Il faut aussi ajouter un bouton paramètre qui affiche un menu flottant pour renseigner des actions. Par exemple pour vendre expressement le lot sélectionné.
+- Action vendre : Redirige l'utilisateur vers la saisie globale des ventes avec le produit actuel de sélectionné
+- Action Ajuster la quantité : qui crée un mouvement de stock de type ajustement de stock créant des entrées dans les tables stock_mouvement et stock_ajustement.
+- Action Transfert vers un autre point de vente : qui crée des entrées dans stock_transfert et stock_mouvement aussi.
+- Note pour l'agent il faut consulter les tables concernés pour bien regarder les tables à remplir dans chaque cas d'utilisation comme le type de mouvement dans stock_mouvement, date mouvement, source_type, type, id de lot, motif qu'il faut ajouter à stock mouvement.
+- Action pour ajuster le prix d'un livraison item et la marge (qui ne modifie pas du tout les ventes passés).
+
+### Vue aggrégé des ventes
+- Lorsqu'on passe en vue aggrégé pour la vente on tombe sur l'erreur : "Console Error
+Encountered two children with the same key, `40`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+
+components/ResponsiveDataTable/ResponsiveDataTable.tsx (375:15) @ ResponsiveDataTable/<.children<.children<.children<.children<
+
+  373 |           <tbody className="divide-y divide-border-subtle dark:divide-slate-700">
+  374 |             {data.map((row, rowIndex) => (
+> 375 |               <tr
+      |               ^
+  376 |                 key={row.id || rowIndex}
+  377 |                 className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg...
+  378 |                 onClick={() => onRowClick && onRowClick(row)}
+
+Call Stack 25
+Show 21 ignore-listed frame(s)
+tr
+unknown (0:0)
+ResponsiveDataTable/<.children<.children<.children<.children<
+components/ResponsiveDataTable/ResponsiveDataTable.tsx (375:15)
+ResponsiveDataTable
+components/ResponsiveDataTable/ResponsiveDataTable.tsx (374:19)
+VentesPage
+app/(admin)/ventes/page.tsx (294:7)" 
+
+### Pages à implémenter - Clients & abonnement.
+- Il faut commencer à implémenter la table clients qui va contenir des informations sur les clients. Mets un responsive data table où l'on verra les informations de base d'un client. Quand on clique sur un client, on ouvre soit un modal soit un drawer pour montrer tous les détails du client. Il faut également montrer tout ce qu'il a acheté jusqu'ici et le profit obtenu grace au client. Afficher la marge uniquement, la quantité et le bénéfice produit des 2 informations précédents. Il faut utiliser le composant daterangefilter pour filtrer tout ça correctement. 
+
+#### Abonnement
+

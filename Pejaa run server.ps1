@@ -1,0 +1,1 @@
+Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy Bypass", "-Command", "cd 'C:\workspace\Pejaa\next_app'; npx next dev --port 6969 -H 0.0.0.0"

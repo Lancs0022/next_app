@@ -1,15 +1,18 @@
 'use client'
 
-import type { EntryRow, DynamicEntryModule } from '@/lib/dynamicEntry/types'
+import type { EntryRow, CollaboratorTab, DynamicEntryModule } from '@/lib/dynamicEntry/types'
 import { computeMetrics, formatAr } from '@/lib/dynamicEntry/metrics'
 
 interface DynamicEntryMetricsBarProps {
-  rows: EntryRow[]
+  rows?: EntryRow[]
+  tabs?: CollaboratorTab[]
   module: DynamicEntryModule
 }
 
-export default function DynamicEntryMetricsBar({ rows, module }: DynamicEntryMetricsBarProps) {
-  const { totalArticles, totalCost, totalProfit } = computeMetrics(rows, module)
+export default function DynamicEntryMetricsBar({ rows, tabs, module }: DynamicEntryMetricsBarProps) {
+  // Combine rows from all tabs if tabs are provided, otherwise use the rows prop
+  const allRows = tabs ? tabs.flatMap(tab => tab.rows) : rows || []
+  const { totalArticles, totalCost, totalProfit } = computeMetrics(allRows, module)
 
   const costLabel = module === 'livraison' ? 'Coût initial total' : 'Montant total'
   const profitLabel = module === 'livraison' ? 'Profit potentiel estimé' : 'Marge estimée'

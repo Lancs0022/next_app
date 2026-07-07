@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Filter } from 'lucide-react'
 import ResponsiveDataTable from '@/components/ResponsiveDataTable/ResponsiveDataTable'
 import TabBox from '@/components/TabBox/TabBox'
 import MultiSelectTags from '@/components/MultiSelectTags'
@@ -9,9 +10,13 @@ import Modal from '@/components/Modal/Modal'
 import StockAdjustModal from '@/components/Stock/StockAdjustModal'
 import { useToast } from '@/components/Toast/ToastContainer'
 import DateRangeFilter from '@/components/DateRangeFilter'
+import TypeaheadSelect from '@/components/TypeaheadSelect'
 import AddLivraisonDrawer from '@/components/Stock/AddLivraisonDrawer'
 import AddCatalogueDrawer from '@/components/Stock/AddCatalogueDrawer'
 import QuickAddProduitModal from '@/components/Stock/QuickAddProduitModal'
+import { LotExplorer } from '@/components/Stock/LotExplorer'
+import type { ActionMenuId } from '@/components/Stock/ActionMenu'
+import type { Collaborateur, LotActif, PointDeVente, ProduitCatalogue } from '@/components/Stock/types'
 import api from '@/services/api'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { fetchLivraisons, setLivraisonsParams } from '@/redux/livraisonsSlice'
@@ -49,6 +54,9 @@ export default function StockPage() {
 
   const [catalogueStock, setCatalogueStock] = useState<AnyRecord[]>([])
   const [catalogueStockLoading, setCatalogueStockLoading] = useState(false)
+  const [catalogueExplorerProduit, setCatalogueExplorerProduit] = useState<ProduitCatalogue | null>(null)
+  const [catalogueExplorerLots, setCatalogueExplorerLots] = useState<LotActif[]>([])
+  const [catalogueExplorerLoading, setCatalogueExplorerLoading] = useState(false)
 
   const [livraisonsFilters] = useState({
     q: '',
@@ -58,6 +66,8 @@ export default function StockPage() {
   })
 
   const [catalogueFilterCollab, setCatalogueFilterCollab] = useState('')
+  const [catalogueSearch, setCatalogueSearch] = useState('')
+  const [showCatalogueFilters, setShowCatalogueFilters] = useState(false)
   const [catalogueOpen, setCatalogueOpen] = useState(false)
   const [catalogueLoading, setCatalogueLoading] = useState(false)
   const [catalogueDraft, setCatalogueDraft] = useState<AnyRecord | null>(null)
@@ -140,6 +150,91 @@ export default function StockPage() {
     setAjustLot(lot)
     setAjustOpen(true)
   }
+
+  const collaborateursById = useMemo(() => {
+    return Object.fromEntries(collaborateurs.map(c => [String(c.id_collaborateur), c])) as Record<string, Collaborateur>
+  }, [collaborateurs])
+
+  const pointsDeVenteById = useMemo(() => {
+    return Object.fromEntries(pointsDeVente.map(p => [String(p.id_pdv), p])) as Record<string, PointDeVente>
+  }, [pointsDeVente])
+
+  const toProduitCatalogue = useCallback((row: AnyRecord): ProduitCatalogue => {
+    const source = produitsCatalogue.find(p => Number(p.id_produit) === Number(row.id || row.id_produit)) || row
+    return {
+      id_produit: Number(source.id_produit ?? row.id),
+      tenant_id: Number(source.tenant_id ?? 0),
+      id_collaborateur: Number(source.id_collaborateur ?? row.id_collaborateur ?? 0),
+      nom: String(source.nom ?? source.libelle ?? row.libelle ?? 'Sans nom'),
+      description: source.description ?? null,
+      categorie: source.categorie ?? row.categorie ?? null,
+      sku: source.sku ?? null,
+      unite: source.unite ?? row.unite ?? null,
+      seuil_alerte: source.seuil_alerte ?? row.seuil_alerte ?? null,
+      image_url: source.image_url ?? null,
+      statut: source.statut ?? row.statut ?? 'actif',
+      created_by: source.created_by ?? undefined,
+      modified_by: source.modified_by ?? undefined,
+      created_at: source.created_at ?? new Date().toISOString(),
+      updated_at: source.updated_at ?? new Date().toISOString(),
+      modified_at: source.modified_at ?? undefined,
+      deleted_at: source.deleted_at ?? undefined,
+      lotsActifs: Number(row.lots_actifs ?? row.lotsActifs ?? 0),
+      stockTotal: Number(row.quantite_en_stock ?? row.stockTotal ?? 0),
+      chiffreAffaires: Number(row.chiffre_affaires ?? row.chiffreAffaires ?? 0),
+    }
+  }, [produitsCatalogue])
+
+  const toLotActif = useCallback((row: AnyRecord, produit: ProduitCatalogue): LotActif => {
+    return {
+      id: String(row.id_lot),
+      produitId: String(row.id_produit),
+      livraisonId: String(row.id_livraison),
+      livraisonItemId: String(row.id_lot),
+      pdvId: String(row.id_point_vente ?? row.id_pdv),
+      dateArrivee: String(row.date_livraison ?? row.date_creation ?? new Date().toISOString()),
+      prixInitial: Number(row.prix_initial ?? 0),
+      marge: Number(row.marge ?? 0),
+      quantiteActuelle: Number(row.quantite_disponible ?? 0),
+      quantiteInitiale: Number(row.quantite_initiale ?? 0),
+      quantiteVendue: Number(row.quantite_vendue ?? 0),
+      ventesFermees: Number(row.ventes_fermees ?? 0),
+      createdAt: String(row.date_creation ?? row.created_at ?? new Date().toISOString()),
+      createdBy: String(row.created_by_nom ?? row.created_by ?? 'N/A'),
+      produitNom: produit.nom,
+      produitDescription: row.description_produit ?? produit.description ?? null,
+      produitCategorie: row.categorie_produit ?? produit.categorie ?? null,
+      produitCreatedAt: row.produit_created_at ?? produit.created_at,
+      produitCreatedBy: row.produit_created_by != null ? String(row.produit_created_by) : produit.created_by?.toString() ?? null,
+      produitCreateurNom: row.produit_createur_nom ?? null,
+      collaborateurId: row.id_collaborateur != null ? String(row.id_collaborateur) : String(produit.id_collaborateur),
+      collaborateurNom: row.collaborateur_nom ?? null,
+      pdvNom: row.point_vente_nom ?? null,
+      pdvVille: row.point_vente_ville ?? null,
+      chiffreAffaires: Number(row.chiffre_affaires ?? row.chiffreAffaires ?? 0),
+      benefice: Number(row.benefice ?? 0),
+    }
+  }, [])
+
+  const openCatalogueExplorer = useCallback(async (row: AnyRecord) => {
+    const produit = toProduitCatalogue(row)
+    setCatalogueExplorerProduit(produit)
+    setCatalogueExplorerLots([])
+    setCatalogueExplorerLoading(true)
+    try {
+      const { data: res } = await api.get('/stock/lots', {
+        params: { id_produit: produit.id_produit, limit: 200 },
+      })
+      const rows = res?.data || []
+      setCatalogueExplorerLots(rows.map((lot: AnyRecord) => toLotActif(lot, produit)))
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string }
+      showToast(err?.response?.data?.error || err?.message || 'Erreur chargement des lots du produit', 'info')
+      setCatalogueExplorerProduit(null)
+    } finally {
+      setCatalogueExplorerLoading(false)
+    }
+  }, [showToast, toLotActif, toProduitCatalogue])
 
   const openEditSeuil = (produit: AnyRecord) => {
     setEditSeuilProduit(produit)
@@ -267,20 +362,27 @@ export default function StockPage() {
 
   const catalogueRows = useMemo(() => {
     if (!Array.isArray(catalogueStock)) return []
-    return catalogueStock.map(p => ({
-      id: p.id_produit,
-      libelle: p.libelle || p.nom || 'Sans nom',
-      categorie: p.categorie || 'Sans catégorie',
-      quantite_en_stock: Number(p.quantite_en_stock ?? 0),
-      seuil_alerte: p.seuil_alerte ?? null,
-      statut: p.statut || 'actif',
-      prix_vente_actuel: p.prix_vente_actuel ?? null,
-      prix_achat_actuel: p.prix_achat_actuel ?? null,
-      id_collaborateur: p.id_collaborateur,
-      collaborateur_nom: p.collaborateur_nom || 'Collaborateur -',
-      unite: p.unite || ''
-    }))
-  }, [catalogueStock])
+    const search = catalogueSearch.trim().toLowerCase()
+    return catalogueStock
+      .filter((p) => {
+        if (!search) return true
+        return [p.libelle, p.nom, p.categorie, p.collaborateur_nom]
+          .some((value) => String(value ?? '').toLowerCase().includes(search))
+      })
+      .map(p => ({
+        id: p.id_produit,
+        libelle: p.libelle || p.nom || 'Sans nom',
+        categorie: p.categorie || 'Sans catégorie',
+        quantite_en_stock: Number(p.quantite_en_stock ?? 0),
+        seuil_alerte: p.seuil_alerte ?? null,
+        statut: p.statut || 'actif',
+        prix_vente_actuel: p.prix_vente_actuel ?? null,
+        prix_achat_actuel: p.prix_achat_actuel ?? null,
+        id_collaborateur: p.id_collaborateur,
+        collaborateur_nom: p.collaborateur_nom || 'Collaborateur -',
+        unite: p.unite || ''
+      }))
+  }, [catalogueStock, catalogueSearch])
 
   const catalogueColumns = [
     {
@@ -316,6 +418,7 @@ export default function StockPage() {
     {
       field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
       getActions: (row: AnyRecord) => [
+        { label: 'Voir les lots', onClick: () => openCatalogueExplorer(row) },
         { label: 'Voir détails', onClick: () => openDetail('catalogue', row) },
         { label: 'Modifier le seuil', onClick: () => openEditSeuil(row) }
       ]
@@ -394,6 +497,67 @@ export default function StockPage() {
       setLotsLoading(false)
     }
   }, [lotsFilters, lotsPage, lotsLimit, showToast])
+
+  const handleCatalogueLotAction = useCallback(async (actionId: ActionMenuId, lot: LotActif) => {
+    if (actionId === 'vendre') {
+      window.location.href = `/ventes?from_lot=${encodeURIComponent(lot.id)}&from_pv=${encodeURIComponent(lot.pdvId)}`
+      return
+    }
+    if (actionId === 'ajuster') {
+      openAjustement({
+        id_lot: lot.id,
+        id_point_vente: lot.pdvId,
+        libelle_produit: lot.produitNom,
+        point_vente_nom: lot.pdvNom,
+        quantite_disponible: lot.quantiteActuelle,
+        quantite_initiale: lot.quantiteInitiale,
+      })
+      return
+    }
+    if (actionId === 'transfert') {
+      const destination = window.prompt(
+        `ID du point de vente destination pour le lot #${lot.id}\nPV actuel: ${lot.pdvNom || lot.pdvId}\n\nPV disponibles: ${pointsDeVente.map(p => `${p.id_pdv}=${p.nom}`).join(', ')}`
+      )
+      if (!destination) return
+      const quantite = window.prompt(`Quantité à transférer (stock actuel: ${lot.quantiteActuelle})`, String(lot.quantiteActuelle))
+      if (!quantite) return
+      const commentaire = window.prompt('Commentaire de transfert (optionnel)', '') || null
+      try {
+        await api.post('/stock/transferts', {
+          id_lot: Number(lot.id),
+          id_point_vente_source: Number(lot.pdvId),
+          id_point_vente_destination: Number(destination),
+          quantite,
+          commentaire,
+        })
+        showToast('Transfert de stock enregistré', 'success')
+        await Promise.all([fetchLots({ page: 1 }), refreshStockTables()])
+        if (catalogueExplorerProduit) await openCatalogueExplorer(catalogueExplorerProduit)
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { error?: string } }; message?: string }
+        showToast(err?.response?.data?.error || err?.message || 'Erreur transfert de stock', 'error')
+      }
+      return
+    }
+    if (actionId === 'prix') {
+      const prixInitial = window.prompt('Nouveau prix initial', String(lot.prixInitial))
+      if (prixInitial == null) return
+      const marge = window.prompt('Nouvelle marge', String(lot.marge))
+      if (marge == null) return
+      try {
+        await api.patch(`/stock/lots/${lot.id}/prix`, {
+          prix_initial: prixInitial,
+          marge,
+        })
+        showToast('Prix et marge du lot mis à jour', 'success')
+        await Promise.all([fetchLots({ page: 1 }), refreshStockTables()])
+        if (catalogueExplorerProduit) await openCatalogueExplorer(catalogueExplorerProduit)
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { error?: string } }; message?: string }
+        showToast(err?.response?.data?.error || err?.message || 'Erreur mise à jour prix/marge', 'error')
+      }
+    }
+  }, [catalogueExplorerProduit, fetchLots, openCatalogueExplorer, pointsDeVente, refreshStockTables, showToast])
 
   const fetchLivraisonsList = useCallback(async ({ page, limit }: { page?: number; limit?: number } = {}) => {
     const params: AnyRecord = {
@@ -658,30 +822,65 @@ export default function StockPage() {
             content: (
               <div className="space-y-4 -mx-4 md:mx-0">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2 px-4 md:px-0">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Collaborateur :</label>
-                    <select
-                      value={catalogueFilterCollab}
-                      onChange={(e) => setCatalogueFilterCollab(e.target.value)}
-                      className="h-[36px] px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                    >
-                      <option value="">Tous</option>
-                      {collaborateurs.map(c => (
-                        <option key={c.id_collaborateur} value={c.id_collaborateur}>{c.nom}</option>
-                      ))}
-                    </select>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => setShowCatalogueFilters(prev => !prev)}
+                      className="inline-flex items-center justify-center gap-2 h-[38px] px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-600 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors">
+                      <Filter size={14} />
+                      Filtres
+                    </button>
+                    {catalogueFilterCollab && (
+                      <span className="px-2 py-1 rounded-full bg-slate-100 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                        Collaborateur: {collaborateurs.find(c => String(c.id_collaborateur) === catalogueFilterCollab)?.nom || catalogueFilterCollab}
+                      </span>
+                    )}
+                    {catalogueSearch && (
+                      <span className="px-2 py-1 rounded-full bg-slate-100 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                        Recherche: {catalogueSearch}
+                      </span>
+                    )}
                   </div>
                   <button type="button" onClick={() => setCatalogueOpen(true)}
                     className="px-3 md:px-4 py-2 bg-primary hover:bg-primary-strong text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
                     Ajouter au catalogue
                   </button>
                 </div>
+                {showCatalogueFilters && (
+                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <TypeaheadSelect
+                          label="Collaborateur"
+                          options={collaborateurs.map(c => ({ value: String(c.id_collaborateur), label: c.nom }))}
+                          value={catalogueFilterCollab}
+                          onChange={(value) => setCatalogueFilterCollab(value)}
+                          placeholder="Choisir un collaborateur"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Produit</label>
+                        <input
+                          type="text"
+                          value={catalogueSearch}
+                          placeholder="Recherche produit"
+                          onChange={(e) => setCatalogueSearch(e.target.value)}
+                          className="w-full h-[42px] px-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500"
+                        />
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <button type="button" onClick={() => { setCatalogueFilterCollab(''); setCatalogueSearch('') }}
+                          className="w-full h-[42px] px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg transition-colors">
+                          Réinitialiser
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <ResponsiveDataTable columns={catalogueColumns} data={catalogueRows}
                   pagination={{ ...pagination, total: catalogueRows.length }} onPageChange={(page: number) => setPagination(prev => ({ ...prev, page }))}
                   onPageSizeChange={(perPage: number) => setPagination(prev => ({ ...prev, perPage, page: 1 }))}
                   onSort={(s: { field: string; direction: string }) => setSortConfig({ key: s.field, direction: s.direction })}
                   sortConfig={{ field: sortConfig.key || '', direction: sortConfig.direction }} filters={filters as Record<string, string>} onFiltersChange={(f: AnyRecord) => { setFiltersState(f); setPagination(prev => ({ ...prev, page: 1 })) }}
-                  loading={catalogueStockLoading} onRowClick={(row: AnyRecord) => openDetail('catalogue', row)} />
+                  loading={catalogueStockLoading} onRowClick={(row: AnyRecord) => openCatalogueExplorer(row)} />
               </div>
             )
           }
@@ -700,6 +899,25 @@ export default function StockPage() {
 
       <StockAdjustModal open={ajustOpen && !!ajustLot} onClose={() => { if (!ajustLoading) { setAjustOpen(false); setAjustLot(null) } }}
         lot={ajustLot as never} onSubmit={handleSubmitAjustement as (form: Parameters<typeof handleSubmitAjustement>[0]) => void} loading={ajustLoading} />
+
+      <Drawer open={Boolean(catalogueExplorerProduit)} onClose={() => {
+        setCatalogueExplorerProduit(null)
+        setCatalogueExplorerLots([])
+      }} fullScreen title={catalogueExplorerProduit ? `Lots • ${catalogueExplorerProduit.nom}` : 'Lots'}>
+        {catalogueExplorerProduit && (
+          <LotExplorer
+            produit={catalogueExplorerProduit}
+            onClose={() => {
+              setCatalogueExplorerProduit(null)
+              setCatalogueExplorerLots([])
+            }}
+            collaborateurs={collaborateursById}
+            pointsDeVente={pointsDeVenteById}
+            lots={catalogueExplorerLoading ? [] : catalogueExplorerLots}
+            onLotAction={handleCatalogueLotAction}
+          />
+        )}
+      </Drawer>
 
       <AddLivraisonDrawer open={livraisonOpen} onClose={handleCloseLivraisonDrawer}
         collaborateurs={collaborateurs as { id_collaborateur: string | number; nom: string }[]}

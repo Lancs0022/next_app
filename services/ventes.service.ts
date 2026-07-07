@@ -456,3 +456,120 @@ export async function createVenteDirecte({
 
   return { status: 201, payload: vente }
 }
+// ─── Cancel vente (with ledger journal entries) ────────────────────
+export async function cancelVente({
+  id_vente,
+  raison_suppression,
+  user,
+}: {
+  id_vente: number
+  raison_suppression: string
+  user: { id_utilisateur: number; tenant_id: number }
+}) {
+  const { tenant_id, id_utilisateur } = user
+  if (!tenant_id) throw httpError(401, 'Tenant manquant')
+
+  const vente = await prisma.vente.findUnique({
+    where: { id_vente, tenant_id },
+    include: { articles: true },
+  })
+
+  if (!vente) throw httpError(404, 'Vente non trouvée')
+  if (vente.statut === 'annulee') throw httpError(400, 'Vente déjà annulée')
+
+  // Calculate totals
+  let montant_ht = 0
+  let montant_marge = 0
+  for (const a of vente.articles) {
+    montant_ht += Number(a.prix_initial) * a.quantite_vendue
+    montant_marge += Number(a.marge) * a.quantite_vendue
+  }
+  const montant_total = montant_ht // simplified: no TVA
+
+  const updatedVente = await prisma.$transaction(async (tx) => {
+    // 1. Update Vente header: set statut to annulee and reason
+    const updated = await tx.vente.update({
+      where: { id_vente, tenant_id },
+      data: {
+        statut: 'annulee',
+        raison_suppression,
+      },
+    })
+
+    // 2. For each article: update quantite_retournee, create stock_mouvement (annulation_vente), update stock_actuel
+    for (const a of vente.articles) {
+      // Update vente_article to mark returned quantity
+      await tx.venteArticle.update({
+        where: { id_ligne: a.id_ligne },
+        data: { quantite_retournee: a.quantite_vendue },
+      })
+
+      // Get current stock
+      const stockActuel = await tx.stockActuel.findFirst({
+        where: { tenant_id, id_lot: a.id_lot, id_pdv: vente.id_point_vente },
+      })
+
+      const before_qty = stockActuel ? Number(stockActuel.quantite) : 0
+      const after_qty = before_qty + a.quantite_vendue // returning stock increases quantity
+
+      // Create stock_mouvement of type annulation_vente
+      await tx.stockMouvement.create({
+        data: {
+          tenant_id,
+          id_lot: a.id_lot,
+          type: 'annulation_vente',
+          quantite: a.quantite_vendue,
+          before_qty,
+          after_qty,
+          source_type: 'ANNULATION_VENTE',
+          source_id: vente.id_vente,
+          created_by: id_utilisateur || null,
+        },
+      })
+
+      // Update stock_actuel
+      if (stockActuel) {
+        await tx.stockActuel.update({
+          where: { id: stockActuel.id },
+          data: { quantite: after_qty },
+        })
+      } else {
+        // If no stockActuel record, create one (should not happen in normal flow)
+        await tx.stockActuel.create({
+          data: {
+            tenant_id,
+            id_lot: a.id_lot,
+            id_pdv: vente.id_point_vente,
+            quantite: after_qty,
+            quantite_reservee: 0,
+            created_by: id_utilisateur || null,
+          },
+        })
+      }
+    }
+
+    // 3. Create compensating TransactionFinanciere (OUT) for reimbursement
+    const venteCategory = await tx.transactionFinanciere.findFirst({
+      where: { tenant_id, source_module: 'VENTE' },
+      select: { id_categorie_financiere: true },
+    })
+    const id_categorie_financiere = venteCategory?.id_categorie_financiere ?? 1
+
+    await tx.transactionFinanciere.create({
+      data: {
+        tenant_id,
+        type: 'OUT',
+        montant: montant_total,
+        id_categorie_financiere,
+        source_module: 'VENTE',
+        source_id: vente.id_vente,
+        description: `Annulation vente #${vente.id_vente}: ${raison_suppression}`,
+        created_by: id_utilisateur,
+      },
+    })
+
+    return updated
+  })
+
+  return { status: 200, payload: updatedVente }
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import SelectWithTags from '@/components/SelectWithTags'
+import TypeaheadSelect from '@/components/TypeaheadSelect'
 import Modal from '@/components/Modal/Modal'
 import { FormField, formInputClass } from '@/components/FormField'
 import DynamicEntryGrid from '@/components/DynamicEntry/DynamicEntryGrid'
@@ -143,13 +143,31 @@ export default function DynamicEntrySession({
             className={formInputClass}
           />
         </FormField>
-        <SelectWithTags
+        <TypeaheadSelect
           label="Point de vente"
           options={pvOptions}
           value={session.meta.id_pdv}
           onChange={val => session.setMeta(prev => ({ ...prev, id_pdv: val }))}
           placeholder="Sélectionner"
         />
+      </div>
+      <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 gap-3 shrink-0">
+        <FormField label="Référence">
+          <input
+            type="text"
+            value={session.meta.reference || new Date().toISOString()}
+            onChange={e => session.setMeta(prev => ({ ...prev, reference: e.target.value }))}
+            className={formInputClass}
+          />
+        </FormField>
+        <FormField label="Commentaire">
+          <textarea
+            value={session.meta.comment}
+            onChange={e => session.setMeta(prev => ({ ...prev, comment: e.target.value }))}
+            className={formInputClass}
+            rows={3}
+          />
+        </FormField>
       </div>
 
       <CollaboratorTabs
@@ -191,8 +209,8 @@ export default function DynamicEntrySession({
         )}
       </div>
 
-      {session.activeTab && (
-        <DynamicEntryMetricsBar rows={session.activeTab.rows} module={module} />
+      {session.tabs.length > 0 && (
+        <DynamicEntryMetricsBar tabs={session.tabs} module={module} />
       )}
 
       <ResetSessionModal
@@ -228,7 +246,7 @@ export default function DynamicEntrySession({
           </div>
         }
       >
-        <SelectWithTags
+        <TypeaheadSelect
           label="Collaborateur"
           options={availableCollabOptions}
           value={selectedNewCollab}

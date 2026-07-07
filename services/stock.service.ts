@@ -48,6 +48,7 @@ export async function listStockActuel(params: StockQueryParams) {
 
 export async function listLotsDisponibles(params: {
   tenantId: number
+  id_produit?: string
   id_point_vente?: string
   id_collaborateur?: string
   q?: string
@@ -60,7 +61,7 @@ export async function listLotsDisponibles(params: {
   limit?: number
 }) {
   const {
-    tenantId, id_point_vente, id_collaborateur, q,
+    tenantId, id_produit, id_point_vente, id_collaborateur, q,
     qte_op, qte_value, dateMin, dateMax, date_target,
     page = 1, limit = 50,
   } = params
@@ -80,6 +81,11 @@ export async function listLotsDisponibles(params: {
     const ids = id_point_vente.split(',').map(Number).filter(Boolean)
     if (ids.length === 1) where.id_pdv = ids[0]
     else if (ids.length > 1) where.id_pdv = { in: ids }
+  }
+
+  if (id_produit) {
+    const productId = Number(id_produit)
+    if (!Number.isNaN(productId)) where.id_produit = productId
   }
 
   // Filter by collaborateur (via produit_catalogue)
@@ -174,18 +180,38 @@ export async function listLotsDisponibles(params: {
   const pdvIds = [...new Set(items.map(i => i.id_pdv))]
   const lotIds = items.map(i => i.id_lot)
 
-  const [produits, pdvs, stocks] = await Promise.all([
+  const [produits, pdvs, stocks, mouvements] = await Promise.all([
     prisma.produitCatalogue.findMany({
       where: { id_produit: { in: produitIds } },
-      select: { id_produit: true, nom: true, categorie: true, id_collaborateur: true },
+      select: {
+        id_produit: true,
+        nom: true,
+        description: true,
+        categorie: true,
+        id_collaborateur: true,
+        created_at: true,
+        created_by: true,
+      },
     }),
     prisma.pointDeVente.findMany({
       where: { id_pdv: { in: pdvIds } },
-      select: { id_pdv: true, nom: true },
+      select: { id_pdv: true, nom: true, ville: true },
     }),
     prisma.stockActuel.findMany({
       where: { tenant_id: tenantId, id_lot: { in: lotIds } },
       select: { id_lot: true, id_pdv: true, quantite: true },
+    }),
+    // NEW: Fetch stock movements to calculate physical quantity sold
+    prisma.stockMouvement.findMany({
+      where: {
+        tenant_id: tenantId,
+        id_lot: { in: lotIds },
+        OR: [
+          { type: 'sortie', source_type: 'VENTE' },
+          { type: 'annulation_vente', source_type: 'VENTE' },
+        ],
+      },
+      select: { id_lot: true, type: true, quantite: true },
     }),
   ])
 
@@ -198,19 +224,69 @@ export async function listLotsDisponibles(params: {
       })
     : []
 
+  const userIds = [
+    ...new Set([
+      ...produits.map(p => p.created_by).filter((id): id is number => id != null),
+      ...items.map(i => i.created_by).filter((id): id is number => id != null),
+    ]),
+  ]
+  const utilisateurs = userIds.length > 0
+    ? await prisma.utilisateur.findMany({
+        where: { id_utilisateur: { in: userIds } },
+        select: { id_utilisateur: true, nom: true, prenom: true },
+      })
+    : []
+
   // ── Build lookup maps ──
   const prodMap = Object.fromEntries(produits.map(p => [p.id_produit, p]))
   const pvMap = Object.fromEntries(pdvs.map(p => [p.id_pdv, p]))
   const collabMap = Object.fromEntries(collaborateurs.map(c => [c.id_collaborateur, c]))
+  const userMap = Object.fromEntries(utilisateurs.map(u => [u.id_utilisateur, [u.prenom, u.nom].filter(Boolean).join(' ') || u.nom]))
   const stockMap = Object.fromEntries(stocks.map(s => [`${s.id_lot}_${s.id_pdv}`, s]))
+
+  // NEW: Calculate quantity sold per lot (ventes - annulations)
+  const quantiteVendueMap: Record<number, number> = {}
+  const chiffreAffairesMap: Record<number, number> = {}
+  const beneficeMap: Record<number, number> = {}
+  const lotSaleRecords = await prisma.venteArticle.findMany({
+    where: {
+      tenant_id: tenantId,
+      id_lot: { in: lotIds },
+    },
+    select: {
+      id_lot: true,
+      quantite_vendue: true,
+      prix_initial: true,
+      marge: true,
+    },
+  })
+
+  mouvements.forEach(m => {
+    if (!quantiteVendueMap[m.id_lot]) quantiteVendueMap[m.id_lot] = 0
+    const qty = Number(m.quantite) || 0
+    if (m.type === 'sortie') quantiteVendueMap[m.id_lot] += qty
+    else if (m.type === 'annulation_vente') quantiteVendueMap[m.id_lot] -= qty
+  })
+
+  lotSaleRecords.forEach((article) => {
+    const qty = Number(article.quantite_vendue || 0)
+    const prix = Number(article.prix_initial || 0)
+    const marge = Number(article.marge || 0)
+    chiffreAffairesMap[article.id_lot] = (chiffreAffairesMap[article.id_lot] ?? 0) + qty * (prix + marge)
+    beneficeMap[article.id_lot] = (beneficeMap[article.id_lot] ?? 0) + qty * marge
+  })
 
   // ── Map to enriched output shape ──
   let data = items.map(item => {
+    const itemWithLegacyFields = item as typeof item & { ventes_fermees?: number }
     const prod = prodMap[item.id_produit]
     const pv = pvMap[item.id_pdv]
     const collab = prod ? collabMap[prod.id_collaborateur] : undefined
     const stock = stockMap[`${item.id_lot}_${item.id_pdv}`]
     const quantite_disponible = stock ? Number(stock.quantite) : 0
+    const quantite_vendue = quantiteVendueMap[item.id_lot] ?? 0
+    const prixInitial = Number(item.prix_initial)
+    const marge = Number(item.marge)
 
     return {
       id_lot: item.id_lot,
@@ -218,16 +294,29 @@ export async function listLotsDisponibles(params: {
       id_produit: item.id_produit,
       libelle_produit: prod?.nom || 'Sans nom',
       categorie_produit: prod?.categorie || null,
+      description_produit: prod?.description || null,
+      produit_created_at: prod?.created_at || null,
+      produit_created_by: prod?.created_by || null,
+      produit_createur_nom: prod?.created_by ? userMap[prod.created_by] || null : null,
       id_collaborateur: prod?.id_collaborateur || null,
       collaborateur_nom: collab?.nom || 'Collaborateur -',
       quantite_disponible,
+      quantite_vendue, // NEW: quantity sold (calculated from stock_mouvement)
       quantite_initiale: Number(item.quantite_initiale),
-      prix_initial: Number(item.prix_initial),
-      marge: Number(item.marge),
+      prix_initial: prixInitial,
+      marge,
+      ventes_fermees: Number(itemWithLegacyFields.ventes_fermees || 0),
+      chiffre_affaires: Number(chiffreAffairesMap[item.id_lot] ?? (quantite_vendue * (prixInitial + marge))),
+      benefice: Number(beneficeMap[item.id_lot] ?? (quantite_vendue * marge)),
       id_point_vente: item.id_pdv,
       point_vente_nom: pv?.nom || `PV #${item.id_pdv}`,
+      point_vente_ville: pv?.ville || null,
       date_livraison: item.date_livraison,
       date_creation: item.created_at,
+      created_by: item.created_by,
+      created_by_nom: item.created_by ? userMap[item.created_by] || null : null,
+      livraison_created_at: item.livraison.created_at,
+      livraison_commentaire: item.livraison.commentaire,
     }
   })
 
@@ -276,15 +365,210 @@ export async function createStockAjustement({
   const id_lot = Number(body?.id_lot ?? 0)
   if (!id_lot) throw httpError(400, "'id_lot' est requis")
 
-  return {
-    status: 201,
-    payload: {
-      type,
-      quantite: delta,
-      id_lot,
-      message: 'Ajustement enregistré (via stock_mouvement)',
-    },
+  const date_ajustement = body?.date_ajustement ? new Date(String(body.date_ajustement)) : new Date()
+  const motif = body?.motif ? String(body.motif) : null
+
+  const payload = await prisma.$transaction(async tx => {
+    const lot = await tx.livraisonItem.findFirst({
+      where: { tenant_id, id_lot },
+      select: { id_lot: true, id_pdv: true },
+    })
+    if (!lot) throw httpError(404, 'Lot introuvable')
+
+    const stock = await tx.stockActuel.findFirst({
+      where: { tenant_id, id_lot, id_pdv: lot.id_pdv },
+    })
+    const beforeQty = stock ? Number(stock.quantite) : 0
+    const afterQty = beforeQty + delta
+    if (afterQty < 0) throw httpError(400, "L'ajustement rendrait le stock négatif")
+
+    const ajustement = await tx.stockAjustement.create({
+      data: {
+        id_lot,
+        id_utilisateur,
+        type,
+        quantite: delta,
+        motif,
+        date_ajustement,
+        statut: 'valide',
+        created_by: id_utilisateur,
+      },
+    })
+
+    await tx.stockMouvement.create({
+      data: {
+        tenant_id,
+        id_lot,
+        type: 'ajustement',
+        quantite: delta,
+        before_qty: beforeQty,
+        after_qty: afterQty,
+        source_type: 'AJUSTEMENT',
+        source_id: ajustement.id_stock_ajustement,
+        date_mouvement: date_ajustement,
+        created_by: id_utilisateur,
+      },
+    })
+
+    if (stock) {
+      await tx.stockActuel.update({
+        where: { id: stock.id },
+        data: { quantite: afterQty },
+      })
+    } else {
+      await tx.stockActuel.create({
+        data: {
+          tenant_id,
+          id_lot,
+          id_pdv: lot.id_pdv,
+          quantite: afterQty,
+          quantite_reservee: 0,
+          created_by: id_utilisateur,
+        },
+      })
+    }
+
+    return ajustement
+  })
+
+  return { status: 201, payload }
+}
+
+export async function createStockTransfert({
+  body,
+  user,
+}: {
+  body: Record<string, unknown>
+  user: { id_utilisateur: number; tenant_id: number }
+}) {
+  const { id_utilisateur, tenant_id } = user
+  const id_lot = Number(body?.id_lot ?? 0)
+  const id_point_vente_source = Number(body?.id_point_vente_source ?? body?.id_pdv_source ?? 0)
+  const id_point_vente_destination = Number(body?.id_point_vente_destination ?? body?.id_pdv_destination ?? 0)
+  const quantite = Number(String(body?.quantite ?? '').replace(',', '.'))
+  const commentaire = body?.commentaire ? String(body.commentaire) : null
+
+  if (!id_lot) throw httpError(400, "'id_lot' est requis")
+  if (!id_point_vente_source) throw httpError(400, "'id_point_vente_source' est requis")
+  if (!id_point_vente_destination) throw httpError(400, "'id_point_vente_destination' est requis")
+  if (id_point_vente_source === id_point_vente_destination) {
+    throw httpError(400, 'Le point de vente destination doit être différent de la source')
   }
+  if (!Number.isFinite(quantite) || quantite <= 0) {
+    throw httpError(400, 'La quantité transférée doit être un nombre positif')
+  }
+
+  const payload = await prisma.$transaction(async tx => {
+    const sourceStock = await tx.stockActuel.findFirst({
+      where: { tenant_id, id_lot, id_pdv: id_point_vente_source },
+    })
+    const sourceBefore = sourceStock ? Number(sourceStock.quantite) : 0
+    if (sourceBefore < quantite) throw httpError(400, 'Stock source insuffisant pour ce transfert')
+
+    const destinationStock = await tx.stockActuel.findFirst({
+      where: { tenant_id, id_lot, id_pdv: id_point_vente_destination },
+    })
+    const destinationBefore = destinationStock ? Number(destinationStock.quantite) : 0
+
+    const transfert = await tx.stockTransfert.create({
+      data: {
+        id_point_vente_source,
+        id_point_vente_destination,
+        id_utilisateur,
+        commentaire,
+        created_by: id_utilisateur,
+      },
+    })
+
+    await tx.stockMouvement.create({
+      data: {
+        tenant_id,
+        id_lot,
+        type: 'transfert',
+        quantite,
+        before_qty: sourceBefore,
+        after_qty: sourceBefore - quantite,
+        source_type: 'TRANSFERT',
+        source_id: transfert.id_stock_transfert,
+        created_by: id_utilisateur,
+      },
+    })
+
+    await tx.stockMouvement.create({
+      data: {
+        tenant_id,
+        id_lot,
+        type: 'transfert',
+        quantite,
+        before_qty: destinationBefore,
+        after_qty: destinationBefore + quantite,
+        source_type: 'TRANSFERT',
+        source_id: transfert.id_stock_transfert,
+        created_by: id_utilisateur,
+      },
+    })
+
+    await tx.stockActuel.update({
+      where: { id: sourceStock!.id },
+      data: { quantite: sourceBefore - quantite },
+    })
+
+    if (destinationStock) {
+      await tx.stockActuel.update({
+        where: { id: destinationStock.id },
+        data: { quantite: destinationBefore + quantite },
+      })
+    } else {
+      await tx.stockActuel.create({
+        data: {
+          tenant_id,
+          id_lot,
+          id_pdv: id_point_vente_destination,
+          quantite,
+          quantite_reservee: 0,
+          created_by: id_utilisateur,
+        },
+      })
+    }
+
+    return transfert
+  })
+
+  return { status: 201, payload }
+}
+
+export async function updateLotPrixMarge({
+  idLot,
+  body,
+  user,
+}: {
+  idLot: number
+  body: Record<string, unknown>
+  user: { id_utilisateur: number; tenant_id: number }
+}) {
+  const prix_initial = Number(String(body?.prix_initial ?? '').replace(',', '.'))
+  const marge = Number(String(body?.marge ?? '').replace(',', '.'))
+
+  if (!idLot) throw httpError(400, "'id_lot' est requis")
+  if (!Number.isFinite(prix_initial) || prix_initial < 0) throw httpError(400, 'Prix initial invalide')
+  if (!Number.isFinite(marge) || marge < 0) throw httpError(400, 'Marge invalide')
+
+  const lot = await prisma.livraisonItem.findFirst({
+    where: { id_lot: idLot, tenant_id: user.tenant_id },
+    select: { id_lot: true },
+  })
+  if (!lot) throw httpError(404, 'Lot introuvable')
+
+  const updated = await prisma.livraisonItem.update({
+    where: { id_lot: idLot },
+    data: {
+      prix_initial,
+      marge,
+      modified_by: user.id_utilisateur,
+    },
+  })
+
+  return { status: 200, payload: updated }
 }
 
 // ─── Catalogue with aggregated stock quantities ────────────────────────────

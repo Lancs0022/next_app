@@ -73,7 +73,7 @@ function buildDefaultMeta(): SessionMeta {
     date: todayIso(),
     id_pdv: '',
     reference: '',
-    commentaire: '',
+    comment: '',
     id_client: '',
   }
 }
@@ -265,7 +265,7 @@ export function useDynamicEntrySession({
         id_pdv: Number(meta.id_pdv),
         date_livraison: meta.date,
         reference: meta.reference || null,
-        commentaire: meta.commentaire || null,
+        commentaire: meta.comment || meta.commentaire || null,
         lines: validRows.map(r => ({
           id_produit: Number(r.id_produit),
           prix_initial: Number(r.prix_initial || 0),

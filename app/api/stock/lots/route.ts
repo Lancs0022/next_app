@@ -7,6 +7,7 @@ export const GET = withAuth(
     const { searchParams } = req.nextUrl
     const data = await listLotsDisponibles({
       tenantId,
+      id_produit: searchParams.get('id_produit') ?? undefined,
       id_point_vente: searchParams.get('id_point_vente') ?? undefined,
       id_collaborateur: searchParams.get('id_collaborateur') ?? undefined,
       q: searchParams.get('q') ?? undefined,

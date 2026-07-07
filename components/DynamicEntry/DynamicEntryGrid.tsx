@@ -149,7 +149,7 @@ export default function DynamicEntryGrid({
         {/* Mobile: card layout */}
         <div className="flex-1 overflow-auto min-h-0 md:hidden p-3 space-y-3">
         {rows.map((row, index) => (
-          <div key={row.id} className="rounded-lg border border-slate-700 bg-slate-800/80 p-4 space-y-3">
+          <div key={`${row.id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-800/80 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-400">Ligne {index + 1}</span>
               <button
@@ -194,7 +194,7 @@ export default function DynamicEntryGrid({
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={row.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+              <tr key={`${row.id}-${index}`} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
                 <td className="px-2 py-3 text-slate-400 text-center">{index + 1}</td>
                 {displayColumns.map((col, colIdx) => (
                   <td key={`${row.id}-${String(col.key)}-${colIdx}`} className="px-3 py-3 align-top">

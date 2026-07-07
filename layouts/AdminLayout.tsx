@@ -77,8 +77,8 @@ const AdminLayout = ({
           isSidebarCollapsed={isSidebarCollapsed}
           isSidebarOverlayOpen={isSidebarOverlayOpen}
         />
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
-          <div className="p-4 md:p-6 lg:p-10">{children}</div>
+        <main className="relative flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900">
+          <div className="relative min-h-[calc(100vh-4rem)] p-4 md:p-6 lg:p-10">{children}</div>
         </main>
       </div>
       {isMobileSidebarMode && isSidebarOverlayOpen && (

@@ -340,6 +340,7 @@ model VenteArticle {
   deleted           Boolean  @default(false)
   deleted_at        DateTime?
   created_at        DateTime @default(now())
+  quantite_retournee Decimal @default(0) @db.Decimal(12, 3)
   vente             Vente    @relation(fields: [id_vente], references: [id_vente])
 
   @@map("vente_article")

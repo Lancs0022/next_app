@@ -105,7 +105,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
     <ToastContext.Provider value={{ showToast, dismissToast, updateToast }}>
       {children}
       {/* Positioned top-right, below topbar — matches Pejaa_Front */}
-      <div className="fixed top-20 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed top-24 right-8 z-[10000] flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
