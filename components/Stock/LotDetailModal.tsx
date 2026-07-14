@@ -1,11 +1,18 @@
 'use client'
 
-import { useState } from "react";
-import { Tag, TrendingUp, ReceiptText, Settings, ChevronDown, X, DollarSign } from "lucide-react";
-import { ActionMenu, ActionMenuId } from "./ActionMenu";
-import { CategoryBadge, CollabBadge, PDVBadge, StockRatioBadge } from "./Badges";
-import { fmt, fmtXOF } from "./formatters";
-import { ProduitCatalogue, PointDeVente, Collaborateur, LotActif } from "./types";
+import { useState, useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { iconMap } from '@/components/icons/Icons'
+import { Z_SIDEBAR_FLYOUT } from '@/lib/zIndex'
+import { ActionMenu, ActionMenuId } from "./ActionMenu"
+import { CategoryBadge, CollabBadge, PDVBadge, StockRatioBadge } from "./Badges"
+import { fmt } from "./formatters"
+import { ProduitCatalogue, PointDeVente, Collaborateur, LotActif } from "./types"
+import api from "@/services/api"
+import { useToast } from '@/components/Toast/ToastContainer'
+import { X } from "lucide-react"
 
 export function LotDetailModal({
   lot,
@@ -22,7 +29,9 @@ export function LotDetailModal({
   pointsDeVente: Record<string, PointDeVente>;
   onAction?: (actionId: ActionMenuId, lot: LotActif) => void;
 }) {
-  const [actionsOpen, setActionsOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false)
+  const [movements, setMovements] = useState<Array<any>>([])
+  const [movementsLoading, setMovementsLoading] = useState(false)
   const collab = collaborateurs[produit.id_collaborateur];
   const pdv = pointsDeVente[lot.pdvId];
 
@@ -47,6 +56,32 @@ export function LotDetailModal({
         break;
     }
   };
+
+  // Fetch stock movements for this lot
+    useEffect(() => {
+      const fetchMovements = async () => {
+        setMovementsLoading(true)
+            try {
+              const params = new URLSearchParams()
+              if (lot.pdvId) {
+                params.append('id_pdv', lot.pdvId.toString())
+              }
+              const res = await api.get(`/stock/lots/${lot.id}/mouvements?${params.toString()}`)
+              setMovements(res.data || [])
+            } catch (err: any) {
+              console.error('Failed to fetch stock movements:', err)
+              const { showToast } = useToast()
+              showToast(err?.response?.data?.error || err?.message || 'Erreur lors du chargement des mouvements de stock', 'error')
+              setMovements([])
+            } finally {
+              setMovementsLoading(false)
+            }
+      }
+
+      if (lot.id) {
+        fetchMovements()
+      }
+    }, [lot.id, lot.pdvId])
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
@@ -73,9 +108,9 @@ export function LotDetailModal({
                 onClick={() => setActionsOpen((v) => !v)}
                 className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-md border border-slate-300 bg-slate-50 text-slate-700 hover:text-slate-900 hover:border-slate-400 text-xs sm:text-sm font-medium transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-500"
               >
-                <Settings size={13} className="min-w-[13px] min-h-[13px]" />
+                <svg className="min-w-[13px] min-h-[13px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 <span className="hidden sm:inline">Paramètres</span>
-                <ChevronDown size={11} className="min-w-[11px] min-h-[11px]" />
+                <svg className="min-w-[11px] min-h-[11px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
               </button>
               {actionsOpen && <ActionMenu onAction={handleAction} onClose={() => setActionsOpen(false)} />}
             </div>
@@ -93,7 +128,7 @@ export function LotDetailModal({
           {/* ── Section 1: Catalogue & Propriétaire ── */}
           <section className="rounded-lg border border-slate-200 overflow-hidden dark:border-slate-700">
             <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-              <Tag size={13} className="text-emerald-600 dark:text-emerald-400 min-w-[13px] min-h-[13px]" />
+              <div className="h-3 w-3 bg-emerald-500 rounded"></div>
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
                 Informations Catalogue & Propriétaire
               </h3>
@@ -108,23 +143,19 @@ export function LotDetailModal({
               </div>
               <div className="sm:col-span-2">
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Collaborateur</p>
-                <CollabBadge name={lot.collaborateurNom || collab?.nom || 'Collaborateur -'} />
+                <span className="text-sm text-slate-700 dark:text-slate-300">{collab?.nom || collab?.prenom || 'Collaborateur -'}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Catégorie</p>
-                {lot.produitCategorie || produit.categorie ? <CategoryBadge cat={lot.produitCategorie || produit.categorie || ''} /> : <span className="text-slate-400 dark:text-slate-500">N/A</span>}
+                <span className="text-slate-400 dark:text-slate-500">{produit.categorie || 'N/A'}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Créé par</p>
-                <span className="text-sm text-slate-700 dark:text-slate-300">{lot.produitCreateurNom || lot.produitCreatedBy || produit.created_by?.toString() || 'N/A'}</span>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Description</p>
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{lot.produitDescription || produit.description || '-'}</p>
+                <span className="text-sm text-slate-700 dark:text-slate-300">{produit.createur_nom || 'N/A'}</span>
               </div>
               <div className="sm:col-span-2 pt-2 border-t border-slate-300 dark:border-slate-700 flex gap-4">
-                <span className="text-xs text-slate-600 dark:text-slate-400">Créé le <span className="text-slate-700 dark:text-slate-300 font-semibold">{lot.produitCreatedAt || produit.created_at ? new Date(lot.produitCreatedAt || produit.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span></span>
-                <span className="text-xs text-slate-600 dark:text-slate-400">Utilisateur <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">{lot.produitCreatedBy || produit.created_by?.toString() || 'N/A'}</span></span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">Créé le <span className="text-slate-700 dark:text-slate-300 font-semibold">{produit.created_at ? new Date(produit.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span></span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">Utilisateur <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">{produit.createur_par || 'N/A'}</span></span>
               </div>
             </div>
           </section>
@@ -132,7 +163,7 @@ export function LotDetailModal({
           {/* ── Section 2: Livraison & Logistique ── */}
           <section className="rounded-lg border border-slate-200 overflow-hidden dark:border-slate-700">
             <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-              <ReceiptText size={13} className="text-blue-600 dark:text-blue-400 min-w-[13px] min-h-[13px]" />
+              <div className="h-3 w-3 bg-blue-500 rounded"></div>
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
                 Informations Livraison & Logistique
               </h3>
@@ -140,27 +171,27 @@ export function LotDetailModal({
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-slate-900/50">
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Livraison ID</p>
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{lot.livraisonId}</span>
+                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{lot.livraison_id}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Item ID</p>
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{lot.livraisonItemId}</span>
+                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{lot.livraison_item_id}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Date d'arrivée</p>
-                <span className="text-sm text-slate-700 dark:text-slate-300">{lot.dateArrivee ? new Date(lot.dateArrivee).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300">{lot.date_arrivee ? new Date(lot.date_arrivee).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Point de Vente</p>
-                <PDVBadge name={lot.pdvNom || pdv?.nom || `PV #${lot.pdvId}`} city={lot.pdvVille || pdv?.ville || undefined} />
+                <span className="text-sm font-medium">{pdv?.nom || `PV #${lot.pdv_id}`} {pdv?.ville && `(${pdv.ville})`}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">PDV ID</p>
-                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{lot.pdvId}</span>
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{lot.pdv_id}</span>
               </div>
               <div className="sm:col-span-2 pt-2 border-t border-slate-300 dark:border-slate-700 flex gap-4">
-                <span className="text-xs text-slate-600 dark:text-slate-400">Créé le <span className="text-slate-700 dark:text-slate-300 font-semibold">{lot.createdAt ? new Date(lot.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span></span>
-                <span className="text-xs text-slate-600 dark:text-slate-400">Par <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">{lot.createdBy || 'N/A'}</span></span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">Créé le <span className="text-slate-700 dark:text-slate-300 font-semibold">{lot.created_at ? new Date(lot.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</span></span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">Par <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">{lot.created_by || 'N/A'}</span></span>
               </div>
             </div>
           </section>
@@ -168,7 +199,7 @@ export function LotDetailModal({
           {/* ── Section 3: Finances & Stocks ── */}
           <section className="rounded-lg border border-slate-200 overflow-hidden dark:border-slate-700">
             <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-              <TrendingUp size={13} className="text-emerald-600 dark:text-emerald-400 min-w-[13px] min-h-[13px]" />
+              <div className="h-3 w-3 bg-emerald-500 rounded"></div>
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
                 Performances Financières & Stocks
               </h3>
@@ -176,28 +207,32 @@ export function LotDetailModal({
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-slate-900/50">
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Prix unitaire initial</p>
-                <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{fmtXOF(lot.prixInitial)}</span>
+                <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{lot.prix_initial ? lot.prix_initial.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar' : '0 Ar'}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Marge PEJAA</p>
-                <span className="font-mono text-sm font-semibold text-emerald-700 dark:text-emerald-300">{fmtXOF(lot.marge)}</span>
+                <span className="font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{lot.marge ? lot.marge.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar' : '0 Ar'}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Prix de vente</p>
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{fmtXOF(lot.prixInitial + lot.marge)}</span>
+                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{(lot.prix_initial || 0) + (lot.marge || 0)}</span>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Stock actuel / initial</p>
-                <StockRatioBadge current={lot.quantiteActuelle} initial={lot.quantiteInitiale} large />
+                <div className="flex items-center">
+                  <span className="font-mono text-sm">{lot.quantite_actuelle}</span>
+                  <span className="mx-1">/</span>
+                  <span className="font-mono text-sm">{lot.quantite_initiale}</span>
+                </div>
               </div>
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Ventes fermées</p>
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{fmt(lot.ventesFermees)} unités</span>
+                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{lot.ventes_fermees} unités</span>
               </div>
               {/* NEW: Quantity sold */}
               <div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Quantité vendue</p>
-                <span className="font-mono text-sm text-blue-700 dark:text-blue-300">{fmt(lot.quantiteVendue)} unités</span>
+                <span className="font-mono text-sm text-blue-600 dark:text-blue-400">{lot.quantite_vendue} unités</span>
               </div>
               {/* Highlight: Argent généré */}
               <div className="sm:col-span-2 mt-1 rounded-lg border border-emerald-300/50 bg-emerald-50/50 dark:border-emerald-500/25 dark:bg-emerald-500/5 px-4 py-3">
@@ -205,26 +240,92 @@ export function LotDetailModal({
                   Argent généré par ce lot
                 </p>
                 <p className="font-mono text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300 tracking-tight">
-                  {fmtXOF(lot.chiffreAffaires ?? lot.quantiteVendue * (lot.prixInitial + lot.marge))}
+                  {lot.chiffre_affaires ? lot.chiffre_affaires.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar' : ((lot.quantite_vendue || 0) * ((lot.prix_initial || 0) + (lot.marge || 0))).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar'}
                 </p>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  {lot.chiffreAffaires != null
-                    ? `${fmt(lot.quantiteVendue)} unités vendues · ${fmtXOF(lot.prixInitial + lot.marge)} / unité`
-                    : `${fmt(lot.quantiteVendue)} unités vendues · ${fmtXOF(lot.prixInitial + lot.marge)} / unité`}
+                  {`${lot.quantite_vendue} unités vendues · ${((lot.prix_initial || 0) + (lot.marge || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar / unité`}
                 </p>
               </div>
               <div className="sm:col-span-2 rounded-lg border border-emerald-300/50 bg-emerald-50/50 dark:border-emerald-500/25 dark:bg-emerald-500/5 px-4 py-3">
                 <div className="flex items-center gap-2 mb-2 text-emerald-700 dark:text-emerald-300">
-                  <DollarSign size={14} className="min-w-[14px] min-h-[14px]" />
+                  <div className="h-3 w-3 bg-emerald-500 rounded"></div>
                   <p className="text-xs uppercase tracking-widest font-semibold">Bénéfice net</p>
                 </div>
                 <p className="font-mono text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300 tracking-tight">
-                  {fmtXOF(lot.benefice ?? lot.quantiteVendue * lot.marge)}
+                  {((lot.quantite_vendue || 0) * (lot.marge || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar
                 </p>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  {`${fmt(lot.quantiteVendue)} unités vendues · ${fmtXOF(lot.marge)} de marge / unité`}
+                  {`${lot.quantite_vendue} unités vendues · ${(lot.marge || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar / unité`}
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* ── Section 4: Mouvements de stock (NEW) ── */}
+          <section className="rounded-lg border border-slate-200 overflow-hidden dark:border-slate-700">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 border-b border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+              <div className="h-3 w-3 bg-indigo-500 rounded"></div>
+              <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+                Mouvements de stock
+              </h3>
+            </div>
+            <div className="p-4 space-y-3">
+              {movementsLoading ? (
+                <div className="text-center py-4 text-slate-500 dark:text-slate-400">
+                  Chargement des mouvements...
+                </div>
+              ) : movements.length === 0 ? (
+                <div className="text-center py-4 text-slate-500 dark:text-slate-400">
+                  Aucun mouvement enregistré pour ce lot.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-300">Date</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-300">Type</th>
+                        <th className="px-3 py-2 text-right font-medium text-slate-600 dark:text-slate-300">Quantité</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-300">Source</th>
+                        <th className="px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-300">Utilisateur</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {movements.map((m, index) => (
+                        <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                            {m.date_mouvement ? new Date(m.date_mouvement).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded 
+                              ${m.type === 'entree' ? 'bg-green-100 text-green-800' :
+                                m.type === 'sortie' ? 'bg-red-100 text-red-800' :
+                                m.type === 'annulation_vente' ? 'bg-yellow-100 text-yellow-800' :
+                                m.type === 'transfert' ? 'bg-blue-100 text-blue-800' :
+                                m.type === 'ajustement' ? 'bg-purple-100 text-purple-800' :
+                                'bg-gray-100 text-gray-800'}`}>
+                              {m.type}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-200">
+                            {m.quantite >= 0 ? `+${fmt(m.quantite)}` : `-${fmt(Math.abs(m.quantite))}`} unités
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                            {m.source_type === 'VENTE' ? `Vente #${m.source_id}` :
+                              m.source_type === 'LIVRAISON' ? `Livraison #${m.source_id}` :
+                              m.source_type === 'AJUSTEMENT' ? `Ajustement #${m.source_id}` :
+                              m.source_type === 'TRANSFERT' ? `Transfert #${m.source_id}` :
+                              m.source_id ? `#${m.source_id}` : '-'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                            {m.createdBy || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </section>
         </div>

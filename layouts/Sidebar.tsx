@@ -193,6 +193,7 @@ const Sidebar = ({ activeRoute = '/dashboard', isCollapsed = false, onNavigate }
     if (!flyout || isOpen) return
     const pos = positionAnchor(flyout.id)
     if (!pos) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFlyout(prev => {
       if (!pos) return prev;
       if (prev && prev.top === pos.top && prev.left === pos.left) return prev;

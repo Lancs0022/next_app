@@ -147,6 +147,16 @@ export default function VentesPage() {
 
   const handleCloseDetail = () => { setDetailOpen(false); setSelectedRow(null); setDetailData(null) }
 
+  const cancelVente = async (venteId: number, raison: string) => {
+    try {
+      await api.post(`/api/ventes/${venteId}/annuler`, { raison });
+      showToast('Vente annulée avec succès', 'success');
+      fetchVentes({ page: 1 });
+    } catch (err: any) {
+      showToast(err?.response?.data?.error || err?.message || 'Erreur lors de l\'annulation de la vente', 'error');
+    }
+  };
+
   const atomiqueColumns = [
     { field: 'date_vente', headerName: 'Date', width: '140px', minWidth: '120px', sortable: true,
       renderCell: (row: AnyRecord) => row.date_vente ? new Date(row.date_vente).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-' },
@@ -165,7 +175,18 @@ export default function VentesPage() {
     { field: 'statut', headerName: 'Statut', width: '130px', minWidth: '110px', sortable: true,
       renderCell: (row: AnyRecord) => <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatutBadgeClass(row.statut)}`}>{formatStatut(row.statut)}</span> },
     { field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
-      getActions: (row: AnyRecord) => [{ label: 'Voir détails', onClick: () => handleRowClick(row) }] }
+      getActions: (row: AnyRecord) => [
+        { label: 'Voir détails', onClick: () => handleRowClick(row) },
+        {
+          label: 'Annuler la vente',
+          onClick: () => {
+            const reason = window.prompt("Raison de l'annulation :");
+            if (reason !== null && reason.trim() !== '') {
+              cancelVente(row.id_vente, reason.trim());
+            }
+          }
+        }
+      ]}
   ]
 
   const aggregeColumns = [
@@ -184,7 +205,18 @@ export default function VentesPage() {
     { field: 'cree_par_nom', headerName: 'Créé par', width: '150px', minWidth: '130px',
       renderCell: (row: AnyRecord) => <span className="text-xs text-slate-600 dark:text-slate-400">{row.cree_par_nom || '-'}</span> },
     { field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
-      getActions: (row: AnyRecord) => [{ label: 'Voir détails', onClick: () => handleRowClick(row) }] }
+      getActions: (row: AnyRecord) => [
+        { label: 'Voir détails', onClick: () => handleRowClick(row) },
+        {
+          label: 'Annuler la vente',
+          onClick: () => {
+            const reason = window.prompt("Raison de l'annulation :");
+            if (reason !== null && reason.trim() !== '') {
+              cancelVente(row.id_vente, reason.trim());
+            }
+          }
+        }
+      ]}
   ]
 
   return (

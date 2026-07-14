@@ -53,6 +53,9 @@ export interface ProduitCatalogue {
   lotsActifs?: number;
   stockTotal?: number;
   chiffreAffaires?: number;
+  // User creator info
+  createur_nom?: string | null;
+  createur_par?: number | null;
 }
 
 export interface LivraisonItem {
@@ -118,7 +121,20 @@ export interface LotActif {
   pdvVille?: string | null;
   livraisonCreatedAt?: string;
   livraisonCommentaire?: string | null;
-}
+  // Snake_case aliases for legacy components
+    livraison_id?: string;
+    livraison_item_id?: string;
+    date_arrivee?: string;
+    pdv_id?: string;
+    created_at?: string;
+    created_by?: string;
+    prix_initial?: number;
+    quantite_actuelle?: number;
+    quantite_initiale?: number;
+    quantite_vendue?: number;
+    ventes_fermees?: number;
+    chiffre_affaires?: number;
+  }
 
 // Mapping functions
 export function mapToLotActif(
@@ -168,10 +184,22 @@ export function mapToLotActif(
     pdvNom: item.point_vente_nom ?? null,
     pdvVille: item.point_vente_ville ?? null,
     chiffreAffaires: Number(item.chiffre_affaires ?? item.chiffreAffaires ?? 0),
-    benefice: Number(item.benefice ?? 0),
-    livraisonCreatedAt: item.livraison_created_at,
-    livraisonCommentaire: item.livraison_commentaire ?? null,
-  };
+        benefice: Number(item.benefice ?? 0),
+        livraisonCreatedAt: item.livraison_created_at,
+        livraisonCommentaire: item.livraison_commentaire ?? null,
+        // Snake_case aliases for legacy components
+        livraison_id: item.id_livraison.toString(),
+        livraison_item_id: item.id_lot.toString(),
+        date_arrivee: item.date_livraison,
+        pdv_id: item.id_pdv.toString(),
+        created_at: item.created_at,
+        created_by: item.created_by?.toString() ?? 'Unknown',
+        prix_initial: Number(item.prix_initial),
+        quantite_actuelle: Number(item.quantite_disponible ?? 0),
+        quantite_initiale: Number(item.quantite_initiale),
+        ventes_fermees: item.ventes_fermees,
+        chiffre_affaires: Number(item.chiffre_affaires ?? item.chiffreAffaires ?? 0),
+      };
 }
 
 export function mapToProduitCatalogue(item: ProduitCatalogue): ProduitCatalogue {
