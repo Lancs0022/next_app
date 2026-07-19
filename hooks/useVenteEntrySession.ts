@@ -213,18 +213,22 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
     const item: SyncQueueItem = {
       client_uuid: meta.client_uuid,
       module: 'vente',
-      id_collaborateur: validLines[0].id_collaborateur,
-      id_pdv: Number(meta.id_pdv),
-      date_vente: meta.date,
-      id_client: resolvedClientId,
-      lines: validLines.map(l => ({
-        id_lot: l.id_lot,
-        id_collaborateur: l.id_collaborateur,
-        quantite: Number(l.quantite),
-        prix_initial: l.prix_initial,
-        marge: l.marge,
-        reduction: Number(l.reduction || 0),
-      })),
+      payload: {
+        client_uuid: meta.client_uuid,
+        header: {
+          id_point_vente: Number(meta.id_pdv),
+          id_client: resolvedClientId,
+          date_vente: meta.date,
+        },
+        lines: validLines.map(l => ({
+          id_lot: l.id_lot,
+          id_collaborateur: l.id_collaborateur,
+          quantite: Number(l.quantite),
+          prix_initial: l.prix_initial,
+          marge: l.marge,
+          reduction: Number(l.reduction || 0),
+        })),
+      },
       enqueuedAt: Date.now(),
     }
 

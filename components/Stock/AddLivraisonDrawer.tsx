@@ -52,9 +52,9 @@ const AddLivraisonDrawer = ({
       open={open}
       title="Saisie Globale des Livraisons"
       onClose={onClose}
-      wide
+      fullScreen
     >
-      <div className="h-[calc(100vh-8rem)] min-h-[520px] -mx-4 md:-mx-6">
+      <div className="h-full -mx-4 md:-mx-6">
         <DynamicEntrySession
           module="livraison"
           title="Saisie Globale des Livraisons"

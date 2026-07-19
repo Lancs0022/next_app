@@ -1,4 +1,4 @@
-export type DynamicEntryModule = 'livraison' | 'vente'
+export type DynamicEntryModule = 'livraison' | 'vente' | 'collaborateur'
 
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'pending'
 
@@ -48,15 +48,17 @@ export interface SessionSnapshot {
 export interface SyncQueueItem {
   client_uuid: string
   module: DynamicEntryModule
-  id_collaborateur: number
-  id_pdv: number
-  date_livraison?: string
-  date_vente?: string
-  reference?: string | null
-  commentaire?: string | null
-  id_client?: number
-  lines: Array<Record<string, unknown>>
+  payload: Record<string, unknown>
   enqueuedAt: number
+}
+
+export interface FailedSyncItem {
+  client_uuid: string
+  module: DynamicEntryModule
+  payload: Record<string, unknown>
+  enqueuedAt: number
+  failedAt: number
+  reason: string
 }
 
 export interface ColumnDef {

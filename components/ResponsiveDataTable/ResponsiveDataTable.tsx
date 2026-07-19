@@ -1,15 +1,29 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import {
+  ColumnFilterDropdown,
+  FilterIcon,
+  defaultFilterState,
+  isFilterActive,
+} from './ColumnFilterDropdown'
+import type { FilterState, FilterKind } from './ColumnFilterDropdown'
+
+// ─── Column interface ─────────────────────────────────────────────────────────
 
 interface Column {
   field: string
   headerName: string
   sortable?: boolean
   filterable?: boolean
+  filterKind?: FilterKind            // defaults to 'text' if absent
+  filterOptions?: string[]           // required when filterKind === 'select'
+  hideBelow?: 'md' | 'lg'           // hides column below this breakpoint
   width?: string
   minWidth?: string
   renderCell?: (row: any) => React.ReactNode
+  renderMobilePrimary?: (row: any) => React.ReactNode  // main card content on mobile
+  renderMobileSecondary?: (row: any) => React.ReactNode // secondary line on mobile card
   getActions?: (row: any) => Array<{ label: string; onClick?: (row?: any) => void; variant?: string; disabled?: boolean }>
 }
 
@@ -24,6 +38,16 @@ interface SortConfig {
   direction: string
 }
 
+// ─── Helper: column visibility class ─────────────────────────────────────────
+
+function hideBelowClass(col: Column): string {
+  if (col.hideBelow === 'lg') return 'hidden lg:table-cell'
+  if (col.hideBelow === 'md') return 'hidden md:table-cell'
+  return ''
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 const ResponsiveDataTable = ({
   columns = [],
   data = [],
@@ -34,7 +58,6 @@ const ResponsiveDataTable = ({
   onSort = () => {},
   sortConfig,
   onRowClick,
-  filters = {},
   onFiltersChange = () => {}
 }: {
   columns?: Column[]
@@ -46,8 +69,7 @@ const ResponsiveDataTable = ({
   onSort?: (config: SortConfig) => void
   sortConfig?: SortConfig
   onRowClick?: (row: any) => void
-  filters?: Record<string, string>
-  onFiltersChange?: (filters: Record<string, string>) => void
+  onFiltersChange?: (filters: Record<string, FilterState>) => void
 }) => {
   const [hoveredRow, setHoveredRow] = useState<number | null>(null)
   const [isMobile, setIsMobile] = useState(false)
@@ -57,6 +79,43 @@ const ResponsiveDataTable = ({
   const [actionsMenu, setActionsMenu] = useState<{ open: boolean; rowKey: any; x: number; y: number }>({ open: false, rowKey: null, x: 0, y: 0 })
   const actionsMenuRef = useRef<HTMLDivElement>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ─── Column filter state ────────────────────────────────────────────────────
+  const [filterOpen, setFilterOpen] = useState<string | null>(null)
+  const [filterPos, setFilterPos] = useState<{ top: number; left: number } | null>(null)
+  const [filterStates, setFilterStates] = useState<Record<string, FilterState>>({})
+
+  const openFilter = (col: Column, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (filterOpen === col.field) {
+      setFilterOpen(null)
+      setFilterPos(null)
+      return
+    }
+    if (!filterStates[col.field]) {
+      setFilterStates(prev => ({ ...prev, [col.field]: defaultFilterState() }))
+    }
+    const rect = e.currentTarget.getBoundingClientRect()
+    setFilterOpen(col.field)
+    setFilterPos({ top: rect.bottom + 6, left: rect.left })
+  }
+
+  const applyFilter = () => {
+    onFiltersChange(filterStates)
+    setFilterOpen(null)
+    setFilterPos(null)
+  }
+
+  const clearFilter = (field: string) => {
+    const next = { ...filterStates }
+    delete next[field]
+    setFilterStates(next)
+    onFiltersChange(next)
+    setFilterOpen(null)
+    setFilterPos(null)
+  }
+
+  // ─── Mobile detection ───────────────────────────────────────────────────────
 
   useEffect(() => {
     const checkMobile = () => {
@@ -178,13 +237,7 @@ const ResponsiveDataTable = ({
   const currentPage = pagination.page || 1
   const totalPages = Math.ceil((pagination.total || 0) / (pagination.perPage || 25))
 
-  const [localFilters, setLocalFilters] = useState<Record<string, string>>(filters)
-
-  const handleFilterChange = (key: string, value: string) => {
-    const newFilters = { ...localFilters, [key]: value }
-    setLocalFilters(newFilters)
-    onFiltersChange(newFilters)
-  }
+  // ─── Loading / empty states ─────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -207,27 +260,57 @@ const ResponsiveDataTable = ({
     )
   }
 
-  // Mobile view - Cards
+  // ─── Pagination footer (shared) ─────────────────────────────────────────────
+
+  const PaginationMobile = () => (
+    <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+      <div className="flex items-center justify-between">
+        <select
+          value={pagination.perPage}
+          onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
+          className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+        >
+          {rowsPerPageOptions.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span className="text-xs text-slate-600 dark:text-slate-400">{currentPage} / {totalPages}</span>
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ─── Mobile view ────────────────────────────────────────────────────────────
+
   if (isMobile) {
+    const primaryCol = columns.find(c => c.renderMobilePrimary)
+    const secondaryCol = columns.find(c => c.renderMobileSecondary)
+    const detailCols = columns.filter(
+      col => col.field !== 'actions' && !col.renderMobilePrimary && !col.renderMobileSecondary
+    )
+
     return (
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-          <div className="space-y-3">
-            {columns.filter(col => col.filterable).slice(0, 2).map(column => (
-              <div key={column.field}>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{column.headerName}</label>
-                <input
-                  type="text"
-                  value={localFilters[column.field] || ''}
-                  onChange={(e) => handleFilterChange(column.field, e.target.value)}
-                  placeholder={`Filtrer par ${column.headerName}`}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="divide-y divide-border-subtle dark:divide-slate-700">
           {data.map((row, rowIndex) => (
             <div
@@ -241,34 +324,36 @@ const ResponsiveDataTable = ({
               onMouseLeave={() => setHoveredRow(null)}
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary text-sm font-semibold">
-                      {row.nom?.[0]}{row.prenom?.[0]}
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-white">{row.nom} {row.prenom}</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">{row.email}</p>
-                    </div>
+                {/* Primary + secondary */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    {primaryCol
+                      ? primaryCol.renderMobilePrimary!(row)
+                      : <span className="font-medium text-slate-900 dark:text-white truncate block">{row[columns[0]?.field]}</span>
+                    }
                   </div>
-                  {row.statut && (
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${row.statut === 'actif' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-400'}`}>
-                      {row.statut}
-                    </span>
+                  {secondaryCol && (
+                    <div className="flex-none text-right">
+                      {secondaryCol.renderMobileSecondary!(row)}
+                    </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {columns.filter(col => col.field !== 'nom' && col.field !== 'prenom' && col.field !== 'actions').map(column => (
-                    <div key={column.field} className="flex flex-col">
-                      <span className="text-xs text-slate-600 dark:text-slate-400 mb-1">{column.headerName}</span>
-                      <div className="text-slate-900 dark:text-white">
-                        {column.renderCell ? column.renderCell(row) : row[column.field]}
+                {/* Detail grid — exclude primary/secondary/actions columns */}
+                {detailCols.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {detailCols.map(column => (
+                      <div key={column.field} className="flex flex-col">
+                        <span className="text-xs text-slate-600 dark:text-slate-400 mb-1">{column.headerName}</span>
+                        <div className="text-slate-900 dark:text-white">
+                          {column.renderCell ? column.renderCell(row) : row[column.field]}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
 
+                {/* Actions */}
                 {columns.find(col => col.field === 'actions') && (
                   <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-700">
                     {renderActionsCell(row, rowIndex, columns.find(col => col.field === 'actions')!)}
@@ -279,64 +364,15 @@ const ResponsiveDataTable = ({
           ))}
         </div>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-          <div className="flex items-center justify-between">
-            <select
-              value={pagination.perPage}
-              onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
-              className="px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-            >
-              {rowsPerPageOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <span className="text-xs text-slate-600 dark:text-slate-400">{currentPage} / {totalPages}</span>
-              <button
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages}
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
+        <PaginationMobile />
       </div>
     )
   }
 
-  // Desktop view - Table
+  // ─── Desktop view ───────────────────────────────────────────────────────────
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex flex-wrap gap-3">
-          {columns.filter(col => col.filterable).slice(0, 4).map(column => (
-            <div key={column.field} className="flex-1 min-w-0">
-              <input
-                type="text"
-                value={localFilters[column.field] || ''}
-                onChange={(e) => handleFilterChange(column.field, e.target.value)}
-                placeholder={`Filtrer par ${column.headerName}`}
-                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="overflow-x-auto">
         <table className="w-full min-w-[800px]">
           <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
@@ -344,11 +380,11 @@ const ResponsiveDataTable = ({
               {columns.map((column) => (
                 <th
                   key={column.field}
-                  className={`px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider ${column.sortable ? 'cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-800' : ''}`}
+                  className={`px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider ${column.sortable ? 'cursor-pointer select-none hover:bg-slate-100 dark:hover:bg-slate-800' : ''} ${hideBelowClass(column)}`}
                   style={{ width: column.width, minWidth: column.minWidth }}
                   onClick={() => column.sortable && handleSort(column.field)}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <span>{column.headerName}</span>
                     {column.sortable && normalizedSortConfig.field === column.field && normalizedSortConfig.direction === 'asc' && (
                       <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -364,6 +400,23 @@ const ResponsiveDataTable = ({
                       <svg className="w-4 h-4 shrink-0 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5 5 5M7 13l5 5 5-5" />
                       </svg>
+                    )}
+                    {/* Filter button */}
+                    {column.filterable && (
+                      <button
+                        type="button"
+                        onClick={(e) => openFilter(column, e)}
+                        className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        title={`Filtrer par ${column.headerName}`}
+                        aria-label={`Filtrer par ${column.headerName}`}
+                      >
+                        <FilterIcon
+                          active={
+                            !!filterStates[column.field] &&
+                            isFilterActive(filterStates[column.field], column.filterKind || 'text')
+                          }
+                        />
+                      </button>
                     )}
                   </div>
                 </th>
@@ -383,7 +436,7 @@ const ResponsiveDataTable = ({
                 {columns.map((column) => (
                   <td
                     key={column.field}
-                    className={`px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200 ${column.field === 'actions' ? 'text-right' : 'text-left'}`}
+                    className={`px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200 ${column.field === 'actions' ? 'text-right' : 'text-left'} ${hideBelowClass(column)}`}
                     onClick={(e) => column.field === 'actions' && e.stopPropagation()}
                   >
                     {column.field === 'actions'
@@ -397,6 +450,7 @@ const ResponsiveDataTable = ({
         </table>
       </div>
 
+      {/* Pagination */}
       <div className="bg-slate-50 dark:bg-slate-900 px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-600 dark:text-slate-400">Lignes par page:</span>
@@ -440,7 +494,7 @@ const ResponsiveDataTable = ({
         </div>
       </div>
 
-      {/* Menu contextuel global (clic droit / appui long) */}
+      {/* Context menu (right-click / long-press) */}
       {actionsMenu.open && actionsMenu.x > 0 && (() => {
         const row = data.find((r, idx) => getRowKey(r, idx) === actionsMenu.rowKey)
         if (!row) return null
@@ -470,6 +524,23 @@ const ResponsiveDataTable = ({
               </button>
             ))}
           </div>
+        )
+      })()}
+
+      {/* Column filter dropdown (single shared instance) */}
+      {filterOpen && filterPos && (() => {
+        const col = columns.find(c => c.field === filterOpen)
+        if (!col) return null
+        return (
+          <ColumnFilterDropdown
+            col={col}
+            pos={filterPos}
+            state={filterStates[filterOpen] || defaultFilterState()}
+            onChange={s => setFilterStates(prev => ({ ...prev, [filterOpen]: s }))}
+            onApply={applyFilter}
+            onClear={() => clearFilter(filterOpen)}
+            onClose={() => { setFilterOpen(null); setFilterPos(null) }}
+          />
         )
       })()}
     </div>

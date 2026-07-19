@@ -7,6 +7,7 @@ import ResponsiveDataTable from '@/components/ResponsiveDataTable/ResponsiveData
 import TabBox from '@/components/TabBox/TabBox'
 import Modal from '@/components/Modal/Modal'
 import { useToast } from '@/components/Toast/ToastContainer'
+import type { FilterState } from '@/components/ResponsiveDataTable/ColumnFilterDropdown'
 
 export default function CollaborateursPage() {
   const { showToast } = useToast()
@@ -87,8 +88,8 @@ export default function CollaborateursPage() {
     setSortConfig({ field, direction })
   }
 
-  const handleFiltersChange = (newFilters: Record<string, string>) => {
-    setFilters(newFilters)
+  const handleFiltersChange = (_newFilters: Record<string, FilterState>) => {
+    // Collaborateurs are filtered client-side; column filters not yet wired to API params
   }
 
   const handlePageChange = (page: number) => {
@@ -163,7 +164,6 @@ export default function CollaborateursPage() {
                   onPageSizeChange={handlePageSizeChange}
                   onSort={handleSort}
                   sortConfig={sortConfig}
-                  filters={filters}
                   onFiltersChange={handleFiltersChange}
                 />
               </div>

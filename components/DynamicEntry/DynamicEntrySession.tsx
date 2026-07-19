@@ -151,7 +151,7 @@ export default function DynamicEntrySession({
           placeholder="Sélectionner"
         />
       </div>
-      <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 gap-3 shrink-0">
+      <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
         <FormField label="Référence">
           <input
             type="text"
@@ -165,7 +165,7 @@ export default function DynamicEntrySession({
             value={session.meta.comment}
             onChange={e => session.setMeta(prev => ({ ...prev, comment: e.target.value }))}
             className={formInputClass}
-            rows={3}
+            rows={2}
           />
         </FormField>
       </div>

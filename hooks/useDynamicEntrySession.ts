@@ -261,18 +261,21 @@ export function useDynamicEntrySession({
       return {
         client_uuid: tab.client_uuid,
         module: 'livraison',
-        id_collaborateur: Number(tab.id_collaborateur),
-        id_pdv: Number(meta.id_pdv),
-        date_livraison: meta.date,
-        reference: meta.reference || null,
-        commentaire: meta.comment || meta.commentaire || null,
-        lines: validRows.map(r => ({
-          id_produit: Number(r.id_produit),
-          prix_initial: Number(r.prix_initial || 0),
-          marge: Number(r.marge || 0),
-          quantite_initiale: Number(r.quantite || 0),
-          description: r.description || null,
-        })),
+        payload: {
+          client_uuid: tab.client_uuid,
+          id_collaborateur: Number(tab.id_collaborateur),
+          id_pdv: Number(meta.id_pdv),
+          date_livraison: meta.date,
+          reference: meta.reference || null,
+          commentaire: meta.comment || meta.commentaire || null,
+          lines: validRows.map(r => ({
+            id_produit: Number(r.id_produit),
+            prix_initial: Number(r.prix_initial || 0),
+            marge: Number(r.marge || 0),
+            quantite_initiale: Number(r.quantite || 0),
+            description: r.description || null,
+          })),
+        },
         enqueuedAt: Date.now(),
       }
     }
@@ -280,24 +283,28 @@ export function useDynamicEntrySession({
     return {
       client_uuid: tab.client_uuid,
       module: 'vente',
-      id_collaborateur: Number(tab.id_collaborateur),
-      id_pdv: Number(meta.id_pdv),
-      date_vente: meta.date,
-      id_client: Number(meta.id_client || 0),
-      lines: validRows.map(r => {
-        const lot = lotsDisponibles.find(
-          l => String(l.id_produit) === String(r.id_produit)
-            && String(l.id_collaborateur) === String(tab.id_collaborateur)
-        ) || lotsDisponibles.find(l => String(l.id_lot) === String(r.id_produit))
-        return {
-          id_lot: Number(lot?.id_lot || r.id_lot || r.id_produit),
-          id_collaborateur: Number(tab.id_collaborateur),
-          quantite: Number(r.quantite || 0),
-          prix_initial: Number(r.prix_initial || 0),
-          marge: Number(r.marge || 0),
-          reduction: Number(r.reduction || 0),
-        }
-      }),
+      payload: {
+        client_uuid: tab.client_uuid,
+        header: {
+          id_point_vente: Number(meta.id_pdv),
+          id_client: Number(meta.id_client || 0),
+          date_vente: meta.date,
+        },
+        lines: validRows.map(r => {
+          const lot = lotsDisponibles.find(
+            l => String(l.id_produit) === String(r.id_produit)
+              && String(l.id_collaborateur) === String(tab.id_collaborateur)
+          ) || lotsDisponibles.find(l => String(l.id_lot) === String(r.id_produit))
+          return {
+            id_lot: Number(lot?.id_lot || r.id_lot || r.id_produit),
+            id_collaborateur: Number(tab.id_collaborateur),
+            quantite: Number(r.quantite || 0),
+            prix_initial: Number(r.prix_initial || 0),
+            marge: Number(r.marge || 0),
+            reduction: Number(r.reduction || 0),
+          }
+        }),
+      },
       enqueuedAt: Date.now(),
     }
   }, [meta, module, lotsDisponibles])

@@ -1,7 +1,62 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { PlusIcon } from '@/components/icons/Icons'
+import { Z_DROPDOWN } from '@/lib/zIndex'
+
+const DropdownPortal = ({
+  children,
+  containerRef,
+}: {
+  children: React.ReactNode
+  containerRef: React.RefObject<HTMLDivElement | null>
+}) => {
+  const [mounted, setMounted] = useState(false)
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
+
+  useEffect(() => {
+    setMounted(true)
+
+    const updateCoords = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        setCoords({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        })
+      }
+    }
+
+    updateCoords()
+    window.addEventListener('resize', updateCoords)
+    window.addEventListener('scroll', updateCoords, true) // capture scroll events on any parent
+
+    return () => {
+      window.removeEventListener('resize', updateCoords)
+      window.removeEventListener('scroll', updateCoords, true)
+    }
+  }, [containerRef])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div
+      data-typeahead-portal
+      style={{
+        position: 'absolute',
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        width: `${coords.width}px`,
+        zIndex: Z_DROPDOWN,
+      }}
+    >
+      {children}
+    </div>,
+    document.body
+  )
+}
 
 interface Option {
   value: string | number
@@ -46,9 +101,10 @@ const TypeaheadSelect = ({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as HTMLElement
+      if (containerRef.current && containerRef.current.contains(target)) return
+      if (target.closest('[data-typeahead-portal]')) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -120,28 +176,30 @@ const TypeaheadSelect = ({
           </div>
 
           {open && (
-            <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg z-30">
-              {filtered.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
-                  Aucun résultat
-                </div>
-              ) : (
-                filtered.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handleSelect(opt)}
-                    className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
-                      String(opt.value) === String(value)
-                        ? 'bg-slate-100 dark:bg-slate-700 font-medium text-slate-900 dark:text-white'
-                        : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))
-              )}
-            </div>
+            <DropdownPortal containerRef={containerRef}>
+              <div className="w-full max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg py-1">
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+                    Aucun résultat
+                  </div>
+                ) : (
+                  filtered.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleSelect(opt)}
+                      className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                        String(opt.value) === String(value)
+                          ? 'bg-slate-100 dark:bg-slate-700 font-medium text-slate-900 dark:text-white'
+                          : 'text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))
+                )}
+              </div>
+            </DropdownPortal>
           )}
         </div>
 

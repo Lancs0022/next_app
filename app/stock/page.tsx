@@ -879,7 +879,7 @@ export default function StockPage() {
                   pagination={{ ...pagination, total: catalogueRows.length }} onPageChange={(page: number) => setPagination(prev => ({ ...prev, page }))}
                   onPageSizeChange={(perPage: number) => setPagination(prev => ({ ...prev, perPage, page: 1 }))}
                   onSort={(s: { field: string; direction: string }) => setSortConfig({ key: s.field, direction: s.direction })}
-                  sortConfig={{ field: sortConfig.key || '', direction: sortConfig.direction }} filters={filters as Record<string, string>} onFiltersChange={(f: AnyRecord) => { setFiltersState(f); setPagination(prev => ({ ...prev, page: 1 })) }}
+                  sortConfig={{ field: sortConfig.key || '', direction: sortConfig.direction }} onFiltersChange={(f: AnyRecord) => { setFiltersState(f); setPagination(prev => ({ ...prev, page: 1 })) }}
                   loading={catalogueStockLoading} onRowClick={(row: AnyRecord) => openCatalogueExplorer(row)} />
               </div>
             )

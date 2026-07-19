@@ -34,6 +34,17 @@ export async function createCollaborateur({
   const nom = String(body?.nom || '').trim()
   if (!nom) throw httpError(400, "Le champ 'nom' est requis")
 
+  const client_uuid = body?.client_uuid ? String(body.client_uuid) : null
+
+  if (client_uuid) {
+    const existing = await prisma.collaborateur.findFirst({
+      where: { tenant_id: tenantId, client_uuid },
+    })
+    if (existing) {
+      return existing
+    }
+  }
+
   const collab = await prisma.collaborateur.create({
     data: {
       tenant_id: tenantId,
@@ -42,6 +53,7 @@ export async function createCollaborateur({
       email: body?.email ? String(body.email) : null,
       telephone: body?.telephone ? String(body.telephone) : null,
       poste: body?.poste ? String(body.poste) : null,
+      client_uuid,
     },
   })
 

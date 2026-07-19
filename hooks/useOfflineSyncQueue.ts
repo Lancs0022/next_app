@@ -3,8 +3,9 @@
 import { useEffect, useRef, useCallback } from 'react'
 import api from '@/services/api'
 import type { DynamicEntryModule, SyncQueueItem, SyncStatus } from '@/lib/dynamicEntry/types'
-import { loadQueue, saveQueue } from '@/lib/dynamicEntry/storage'
+import { loadQueue, saveQueue, moveToFailedQueue } from '@/lib/dynamicEntry/storage'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { SYNC_ENDPOINTS } from '@/lib/dynamicEntry/syncEndpoints'
 
 interface UseOfflineSyncQueueOptions {
   module: DynamicEntryModule
@@ -57,34 +58,25 @@ export function useOfflineSyncQueue({
     processingRef.current = true
 
     try {
-      if (item.module === 'livraison') {
-        await api.post('/livraisons', {
-          client_uuid: item.client_uuid,
-          id_collaborateur: item.id_collaborateur,
-          id_pdv: item.id_pdv,
-          date_livraison: item.date_livraison,
-          reference: item.reference,
-          commentaire: item.commentaire,
-          lines: item.lines,
-        })
-      } else {
-        await api.post('/ventes/directe', {
-          client_uuid: item.client_uuid,
-          header: {
-            id_point_vente: item.id_pdv,
-            id_client: item.id_client,
-            date_vente: item.date_vente,
-          },
-          lines: item.lines,
-        })
-      }
+      await api.post(SYNC_ENDPOINTS[item.module], item.payload)
 
       dequeue(item.client_uuid)
       onSyncSuccess?.()
       return true
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { error?: string } }; message?: string }
-      onSyncError?.(err?.response?.data?.error || err?.message || 'Erreur de synchronisation')
+      const err = e as { response?: { status?: number; data?: { error?: string } }; message?: string }
+      const status = err?.response?.status
+
+      if (status && status >= 400 && status < 500) {
+        // Validation error: DO NOT retry indefinitely. Move to failed queue.
+        moveToFailedQueue(module, item, err?.response?.data?.error || 'Erreur de validation')
+        dequeue(item.client_uuid)
+        onSyncError?.(err?.response?.data?.error || 'Entrée rejetée, voir les échecs de synchronisation')
+        return true  // Return true to continue processing the rest of the queue
+      }
+
+      // Network / 5xx error: Keep in queue, retry on next reconnect
+      onSyncError?.(err?.message || 'Erreur de synchronisation, nouvelle tentative à la reconnexion')
       return false
     } finally {
       processingRef.current = false

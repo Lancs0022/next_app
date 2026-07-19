@@ -182,10 +182,12 @@ model Collaborateur {
   poste            String?
   adresse          String?
   statut           String   @default("actif") // actif | archive
+  client_uuid      String?  // idempotence key for offline-first sync
   date_adhesion    DateTime @default(now())
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
+  @@unique([tenant_id, client_uuid])
   @@map("collaborateur")
 }
 

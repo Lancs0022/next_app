@@ -4,15 +4,15 @@ import { useEffect, useMemo, useState } from 'react'
 import Drawer from '@/components/Drawer/Drawer'
 import TypeaheadSelect from '@/components/TypeaheadSelect'
 import { FormField, formInputClass } from '@/components/FormField'
-import LotSelectionTable from '@/components/Ventes/LotSelectionTable'
 import QuickAddClientModal from '@/components/Ventes/QuickAddClientModal'
-import ResizablePanel from '@/components/ResizablePanel'
 import SyncStatusIndicator from '@/components/DynamicEntry/SyncStatusIndicator'
 import ResetSessionModal from '@/components/DynamicEntry/ResetSessionModal'
 import { useVenteEntrySession } from '@/hooks/useVenteEntrySession'
 import { formatAr } from '@/lib/dynamicEntry/metrics'
 import api from '@/services/api'
 import { useToast } from '@/components/Toast/ToastContainer'
+import { PlusIcon } from '@/components/icons/Icons'
+import AjouterMarchandisesModal from '@/components/Ventes/AjouterMarchandisesModal'
 
 interface Collaborateur {
   id_collaborateur: string | number
@@ -66,6 +66,7 @@ export default function VenteEntryDrawer({
   const [clientAnonymous, setClientAnonymous] = useState(false)
   const [addClientOpen, setAddClientOpen] = useState(false)
   const [addClientLoading, setAddClientLoading] = useState(false)
+  const [ajouterMarchandisesOpen, setAjouterMarchandisesOpen] = useState(false)
 
   const session = useVenteEntrySession({ onSyncSuccess, onSyncError })
 
@@ -202,7 +203,7 @@ export default function VenteEntryDrawer({
           </div>
         </header>
 
-        <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shrink-0 items-start">
+        <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 shrink-0 items-start">
           <FormField label="Date de vente">
             <input
               type="date"
@@ -243,50 +244,25 @@ export default function VenteEntryDrawer({
               Client anonyme
             </label>
           </div>
-          <TypeaheadSelect
-            label="Collaborateur"
-            options={collabOptions}
-            value={session.filterCollaborateur}
-            onChange={session.setFilterCollaborateur}
-            placeholder="Tous les collaborateurs"
-          />
         </div>
 
-        <FormField label="Rechercher un produit" className="px-4 py-2 border-b border-slate-700 shrink-0">
-          <input
-            type="search"
-            value={session.searchQuery}
-            onChange={e => session.setSearchQuery(e.target.value)}
-            placeholder="Rechercher un produit…"
-            className={formInputClass}
-          />
-        </FormField>
+        <div className="px-4 py-3 border-b border-slate-700 shrink-0">
+          <button
+            type="button"
+            onClick={() => setAjouterMarchandisesOpen(true)}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg flex items-center gap-2"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Ajouter marchandises
+          </button>
+        </div>
 
-        <ResizablePanel
-          storageKey="pejaa.vente.lots.height"
-          defaultHeight={400}
-          minHeight={280}
-          maxHeight={720}
-          className="flex-1 min-h-0"
-        >
-          <LotSelectionTable
-            lots={session.lots}
-            loading={session.lotsLoading}
-            selected={session.selected}
-            sortField={session.sortField}
-            sortDir={session.sortDir}
-            onToggleSort={session.toggleSort}
-            onToggleLot={session.toggleLot}
-          />
-        </ResizablePanel>
-
-        {session.selectedLines.length > 0 && (
-          <div className="border-t border-slate-700 bg-slate-800 shrink-0 max-h-[40vh] overflow-y-auto">
-            <div className="px-4 py-2 border-b border-slate-700">
-              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
-                Panier ({session.selectedLines.length} lot{session.selectedLines.length > 1 ? 's' : ''})
-              </h3>
+        <div className="border-t border-slate-700 bg-slate-800 flex-1 min-h-0 overflow-y-auto">
+          {session.selectedLines.length === 0 ? (
+            <div className="py-12 text-center text-sm text-slate-400">
+              Aucun article sélectionné — clique sur « Ajouter marchandises »
             </div>
+          ) : (
             <div className="p-3 space-y-2">
               {session.selectedLines.map(line => (
                 <div key={line.id_lot} className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-slate-900 border border-slate-700">
@@ -327,8 +303,8 @@ export default function VenteEntryDrawer({
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="bg-slate-800 border-t border-slate-700 px-4 py-3 flex flex-wrap items-center gap-4 text-xs shrink-0">
           <span className="text-slate-300">
@@ -358,6 +334,23 @@ export default function VenteEntryDrawer({
         onClose={() => setAddClientOpen(false)}
         onSubmit={handleAddClient}
         loading={addClientLoading}
+      />
+
+      <AjouterMarchandisesModal
+        open={ajouterMarchandisesOpen}
+        onClose={() => setAjouterMarchandisesOpen(false)}
+        lots={session.lots}
+        loading={session.lotsLoading}
+        selected={session.selected}
+        sortField={session.sortField}
+        sortDir={session.sortDir}
+        onToggleSort={session.toggleSort}
+        onToggleLot={session.toggleLot}
+        searchQuery={session.searchQuery}
+        onSearchChange={session.setSearchQuery}
+        collaborateurs={collabOptions}
+        filterCollaborateur={session.filterCollaborateur}
+        onFilterCollaborateurChange={session.setFilterCollaborateur}
       />
     </Drawer>
   )

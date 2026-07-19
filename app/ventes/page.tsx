@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ResponsiveDataTable from '@/components/ResponsiveDataTable/ResponsiveDataTable'
 import MultiSelectTags from '@/components/MultiSelectTags'
@@ -10,11 +10,12 @@ import { useToast } from '@/components/Toast/ToastContainer'
 import api from '@/services/api'
 import { getPvId } from '@/lib/pointVente'
 import VenteEntryDrawer from '@/components/Ventes/VenteEntryDrawer'
+import type { FilterState } from '@/components/ResponsiveDataTable/ColumnFilterDropdown'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>
 
-export default function VentesPage() {
+function VentesPageContent() {
   const searchParams = useSearchParams()
   const { showToast } = useToast()
 
@@ -145,6 +146,59 @@ export default function VentesPage() {
     fetchVentes({ page: 1 })
   }
 
+  // Translate column FilterState map → existing filters state (which drives fetchVentes)
+  const handleColumnFiltersChange = useCallback((colFilters: Record<string, FilterState>) => {
+    setFilters(prev => {
+      const next = { ...prev }
+
+      // Date
+      const dateF = colFilters['date_vente']
+      if (dateF) {
+        if (dateF.date.preset === 'today') {
+          const today = new Date().toISOString().slice(0, 10)
+          next.date = { dateMin: today, dateMax: today }
+        } else if (dateF.date.preset === 'week') {
+          const now = new Date()
+          const mon = new Date(now)
+          mon.setDate(now.getDate() - now.getDay() + 1)
+          const sun = new Date(mon)
+          sun.setDate(mon.getDate() + 6)
+          next.date = { dateMin: mon.toISOString().slice(0, 10), dateMax: sun.toISOString().slice(0, 10) }
+        } else if (dateF.date.preset === 'month') {
+          const now = new Date()
+          const first = new Date(now.getFullYear(), now.getMonth(), 1)
+          const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+          next.date = { dateMin: first.toISOString().slice(0, 10), dateMax: last.toISOString().slice(0, 10) }
+        } else if (dateF.date.preset === 'custom' && (dateF.date.from || dateF.date.to)) {
+          next.date = { dateMin: dateF.date.from, dateMax: dateF.date.to }
+        } else {
+          next.date = null
+        }
+      } else {
+        next.date = null
+      }
+
+      // Point de vente (single value for now — backend accepts one id_point_vente)
+      const pvF = colFilters['point_vente_nom']
+      if (pvF && pvF.select.length > 0) {
+        const matched = pointsDeVente.find(pv => pvF.select.includes(pv.nom))
+        next.id_point_vente = matched ? getPvId(matched) : ''
+      } else {
+        next.id_point_vente = prev.id_point_vente  // keep header-bar value untouched
+      }
+
+      // Statut (single value for now)
+      const statutF = colFilters['statut']
+      if (statutF && statutF.select.length > 0) {
+        next.statut = statutF.select[0]
+      } else {
+        next.statut = prev.statut  // keep header-bar value untouched
+      }
+
+      return next
+    })
+  }, [pointsDeVente])
+
   const handleCloseDetail = () => { setDetailOpen(false); setSelectedRow(null); setDetailData(null) }
 
   const cancelVente = async (venteId: number, raison: string) => {
@@ -158,21 +212,22 @@ export default function VentesPage() {
   };
 
   const atomiqueColumns = [
-    { field: 'date_vente', headerName: 'Date', width: '140px', minWidth: '120px', sortable: true,
+    { field: 'date_vente', headerName: 'Date', width: '140px', minWidth: '120px', sortable: true, filterable: true, filterKind: 'date' as const,
       renderCell: (row: AnyRecord) => row.date_vente ? new Date(row.date_vente).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-' },
-    { field: 'point_vente_nom', headerName: 'Point de vente', width: '180px', minWidth: '150px', sortable: true,
+    { field: 'point_vente_nom', headerName: 'Point de vente', width: '180px', minWidth: '150px', sortable: true, filterable: true, filterKind: 'select' as const, filterOptions: pointsDeVente.map(pv => pv.nom),
       renderCell: (row: AnyRecord) => <span className="font-medium text-slate-900 dark:text-white">{row.point_vente_nom || `PV #${row.id_point_vente}`}</span> },
     { field: 'libelle_produit', headerName: 'Produit / lot', width: '200px', minWidth: '160px', sortable: true,
       renderCell: (row: AnyRecord) => <span className="text-slate-900 dark:text-white">{row.libelle_produit || `Lot #${row.id_lot}`}</span> },
     { field: 'collaborateur_nom', headerName: 'Collaborateur', width: '160px', minWidth: '140px', sortable: true,
       renderCell: (row: AnyRecord) => <span className="text-slate-700 dark:text-slate-200">{row.collaborateur_nom || '-'}</span> },
-    { field: 'quantite_vendue', headerName: 'Quantité', width: '90px', minWidth: '80px', sortable: true,
+    { field: 'quantite_vendue', headerName: 'Quantité', width: '90px', minWidth: '80px', sortable: true, filterable: true, filterKind: 'numeric' as const,
       renderCell: (row: AnyRecord) => <span className="text-right block">{row.quantite_vendue}</span> },
-    { field: 'montant_ht', headerName: 'Montant ligne', width: '130px', minWidth: '120px', sortable: true,
+    { field: 'montant_ht', headerName: 'Montant ligne', width: '130px', minWidth: '120px', sortable: true, filterable: true, filterKind: 'numeric' as const,
       renderCell: (row: AnyRecord) => <span className="font-semibold text-slate-900 dark:text-white block text-right">{row.montant_ht ? `${Number(row.montant_ht).toLocaleString('fr-FR')} Ar` : '-'}</span> },
-    { field: 'montant_marge', headerName: 'Marge', width: '120px', minWidth: '100px', sortable: true,
+    { field: 'montant_marge', headerName: 'Marge', width: '120px', minWidth: '100px', sortable: true, filterable: true, filterKind: 'numeric' as const,
       renderCell: (row: AnyRecord) => <span className="font-medium text-green-600 dark:text-green-400 block text-right">{row.montant_marge ? `${Number(row.montant_marge).toLocaleString('fr-FR')} Ar` : '-'}</span> },
-    { field: 'statut', headerName: 'Statut', width: '130px', minWidth: '110px', sortable: true,
+    { field: 'statut', headerName: 'Statut', width: '130px', minWidth: '110px', sortable: true, filterable: true, filterKind: 'select' as const,
+      filterOptions: ['en_attente_paiement', 'payee', 'annulee', 'retournee'],
       renderCell: (row: AnyRecord) => <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatutBadgeClass(row.statut)}`}>{formatStatut(row.statut)}</span> },
     { field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
       getActions: (row: AnyRecord) => [
@@ -327,7 +382,7 @@ export default function VentesPage() {
         data={ventes.map(v => ({ ...v, id: mode === 'atomique' ? v.id_vente_article : v.id_vente }))}
         loading={ventesLoading} pagination={{ page: ventesPage, perPage: ventesLimit, total: ventesTotal }}
         onPageChange={(page: number) => fetchVentes({ page })} onPageSizeChange={(perPage: number) => fetchVentes({ page: 1, limit: perPage })}
-        onRowClick={handleRowClick} onFiltersChange={() => {}} />
+        onRowClick={handleRowClick} onFiltersChange={handleColumnFiltersChange} />
 
       {detailOpen && (
         <Drawer open={detailOpen} title={mode === 'atomique' ? 'Détail de la transaction' : `Détail vente #${detailData?.id_vente || selectedRow?.id_vente || ''}`} onClose={handleCloseDetail}>
@@ -421,4 +476,11 @@ export default function VentesPage() {
     </div>
   )
 }
-// TEST
+
+export default function VentesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">Chargement des ventes...</div>}>
+      <VentesPageContent />
+    </Suspense>
+  )
+}
