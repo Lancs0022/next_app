@@ -6,7 +6,6 @@ import { PlusIcon } from '@/components/icons/Icons'
 import type { ColumnDef, EntryRow, ProductOption, DynamicEntryModule } from '@/lib/dynamicEntry/types'
 import { computeRowTotal, formatAr } from '@/lib/dynamicEntry/metrics'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
-import ResizablePanel from '@/components/ResizablePanel'
 
 interface DynamicEntryGridProps {
   rows: EntryRow[]
@@ -145,7 +144,7 @@ export default function DynamicEntryGrid({
 
   return (
     <div className="h-full flex flex-col bg-slate-900 min-h-0">
-      <ResizablePanel storageKey="pejaa.livraison.grid.height" defaultHeight={380} minHeight={240} maxHeight={640} className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile: card layout */}
         <div className="flex-1 overflow-auto min-h-0 md:hidden p-3 space-y-3">
         {rows.map((row, index) => (
@@ -206,7 +205,7 @@ export default function DynamicEntryGrid({
           </tbody>
         </table>
       </div>
-      </ResizablePanel>
+      </div>
 
       <div className="p-3 md:p-4 border-t border-slate-700 bg-slate-800 shrink-0">
         <button

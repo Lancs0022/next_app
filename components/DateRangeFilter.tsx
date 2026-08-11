@@ -22,6 +22,11 @@ interface DateRangeFilterProps {
   value: DateFilterValue | null
   onChange: (value: DateFilterValue | null) => void
   buttonClassName?: string
+  open?: boolean                         // controlled open from parent
+  onOpenChange?: (open: boolean) => void // controlled open from parent
+  hideTrigger?: boolean                  // hide the button trigger
+  hideTargetSelect?: boolean             // hide the "Filtrer par" select
+  defaultTarget?: string                 // pre-set draft.target on open
 }
 
 const startOfDay = (d: Date | string): Date => {
@@ -114,9 +119,19 @@ const DateRangeFilter = ({
   label = 'Filtre par date',
   value,
   onChange,
-  buttonClassName = ''
+  buttonClassName = '',
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
+  hideTargetSelect = false,
+  defaultTarget,
 }: DateRangeFilterProps) => {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = openProp ?? internalOpen
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v)
+    else setInternalOpen(v)
+  }
 
   const [draft, setDraft] = useState({
     target: 'date_livraison',
@@ -232,7 +247,7 @@ const DateRangeFilter = ({
     if (!open) return
     if (value && value.mode) {
       setDraft({
-        target: value.target || 'date_livraison',
+        target: value.target || defaultTarget || 'date_livraison',
         mode: value.mode || 'jour',
         offset: value.offset || 'J0',
         day: value.day || '',
@@ -243,7 +258,7 @@ const DateRangeFilter = ({
         end: value.end || ''
       })
     } else {
-      setDraft(prev => ({ ...prev, target: 'date_livraison' }))
+      setDraft(prev => ({ ...prev, target: defaultTarget || 'date_livraison' }))
       applyOffset('jour', 'J0')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -297,24 +312,26 @@ const DateRangeFilter = ({
 
   return (
     <div className="w-full">
-      {label && (
+      {label && !hideTrigger && (
         <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
           {label}
         </label>
       )}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`w-full h-[42px] flex items-center justify-between gap-2 px-4 rounded-lg border text-sm transition-colors ${hasValue
-            ? 'bg-primary/10 border-primary/30 text-primary'
-            : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400'
-          } ${buttonClassName}`}
-      >
-        <span className="truncate">{hasValue && summary ? summary : 'Sélectionner une date'}</span>
-        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      </button>
+      {!hideTrigger && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`w-full h-[42px] flex items-center justify-between gap-2 px-4 rounded-lg border text-sm transition-colors ${hasValue
+              ? 'bg-primary/10 border-primary/30 text-primary'
+              : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400'
+            } ${buttonClassName}`}
+        >
+          <span className="truncate">{hasValue && summary ? summary : 'Sélectionner une date'}</span>
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </button>
+      )}
 
       <Modal
         open={open}
@@ -349,17 +366,19 @@ const DateRangeFilter = ({
         }
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Filtrer par</label>
-            <select
-              value={draft.target}
-              onChange={(e) => setDraft(prev => ({ ...prev, target: e.target.value }))}
-              className="w-full h-[42px] px-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
-            >
-              <option value="date_livraison">Date d'arrivée</option>
-              <option value="date_creation">Créée le</option>
-            </select>
-          </div>
+          {!hideTargetSelect && (
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Filtrer par</label>
+              <select
+                value={draft.target}
+                onChange={(e) => setDraft(prev => ({ ...prev, target: e.target.value }))}
+                className="w-full h-[42px] px-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+              >
+                <option value="date_livraison">Date d'arrivée</option>
+                <option value="date_creation">Créée le</option>
+              </select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

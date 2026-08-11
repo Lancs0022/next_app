@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Filter } from 'lucide-react'
 import ResponsiveDataTable from '@/components/ResponsiveDataTable/ResponsiveDataTable'
 import TabBox from '@/components/TabBox/TabBox'
@@ -11,7 +12,6 @@ import StockAdjustModal from '@/components/Stock/StockAdjustModal'
 import { useToast } from '@/components/Toast/ToastContainer'
 import DateRangeFilter from '@/components/DateRangeFilter'
 import TypeaheadSelect from '@/components/TypeaheadSelect'
-import AddLivraisonDrawer from '@/components/Stock/AddLivraisonDrawer'
 import AddCatalogueDrawer from '@/components/Stock/AddCatalogueDrawer'
 import QuickAddProduitModal from '@/components/Stock/QuickAddProduitModal'
 import { LotExplorer } from '@/components/Stock/LotExplorer'
@@ -26,6 +26,7 @@ type AnyRecord = Record<string, any>
 
 export default function StockPage() {
   const { showToast } = useToast()
+  const router = useRouter()
   const dispatch = useAppDispatch()
   const livraisonsState = useAppSelector(state => state.livraisons)
 
@@ -72,7 +73,6 @@ export default function StockPage() {
   const [catalogueLoading, setCatalogueLoading] = useState(false)
   const [catalogueDraft, setCatalogueDraft] = useState<AnyRecord | null>(null)
 
-  const [livraisonOpen, setLivraisonOpen] = useState(false)
 
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddInitialCollab, setQuickAddInitialCollab] = useState('')
@@ -455,16 +455,6 @@ export default function StockPage() {
     if (draft) setCatalogueDraft(draft)
   }
 
-  const handleCloseLivraisonDrawer = () => {
-    setLivraisonOpen(false)
-  }
-
-  const handleLivraisonSyncSuccess = async () => {
-    showToast('Livraison synchronisée', 'success')
-    await refreshLists()
-    await fetchLots({ page: 1 })
-    fetchLivraisonsList({ page: 1 })
-  }
 
   const handleQuickAddClick = () => {
     setQuickAddInitialCollab('')
@@ -500,7 +490,7 @@ export default function StockPage() {
 
   const handleCatalogueLotAction = useCallback(async (actionId: ActionMenuId, lot: LotActif) => {
     if (actionId === 'vendre') {
-      window.location.href = `/ventes?from_lot=${encodeURIComponent(lot.id)}&from_pv=${encodeURIComponent(lot.pdvId)}`
+      window.location.href = `/ventes/nouvelle?from_lot=${encodeURIComponent(lot.id)}&from_pv=${encodeURIComponent(lot.pdvId)}`
       return
     }
     if (actionId === 'ajuster') {
@@ -784,7 +774,7 @@ export default function StockPage() {
                   )}
                 </div>
                 <div className="flex justify-end mb-2">
-                  <button type="button" onClick={() => setLivraisonOpen(true)}
+                  <button type="button" onClick={() => router.push('/livraisons/nouvelle')}
                     className="px-3 md:px-4 py-2 bg-[#7e3560] hover:bg-[#6a2f55] text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
                     Ajouter une marchandise
                   </button>
@@ -803,7 +793,7 @@ export default function StockPage() {
             content: (
               <div className="space-y-4 -mx-4 md:mx-0">
                 <div className="flex justify-end mb-2 px-4 md:px-0">
-                  <button type="button" onClick={() => setLivraisonOpen(true)}
+                  <button type="button" onClick={() => router.push('/livraisons/nouvelle')}
                     className="px-3 md:px-4 py-2 bg-primary hover:bg-primary-strong text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap">
                     Nouvelle livraison
                   </button>
@@ -919,14 +909,6 @@ export default function StockPage() {
         )}
       </Drawer>
 
-      <AddLivraisonDrawer open={livraisonOpen} onClose={handleCloseLivraisonDrawer}
-        collaborateurs={collaborateurs as { id_collaborateur: string | number; nom: string }[]}
-        pointsVente={pointsDeVente as { id_pdv: string | number; nom: string }[]}
-        produitsCatalogue={produitsCatalogueOptions}
-        onQuickAddClick={handleQuickAddClick}
-        onSyncSuccess={handleLivraisonSyncSuccess}
-        onSyncError={(msg) => showToast(msg, 'info')}
-      />
 
       <Modal
         open={editSeuilOpen}

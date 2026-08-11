@@ -7,15 +7,16 @@ import MultiSelectTags from '@/components/MultiSelectTags'
 import DateRangeFilter from '@/components/DateRangeFilter'
 import Drawer from '@/components/Drawer/Drawer'
 import { useToast } from '@/components/Toast/ToastContainer'
+import { useRouter } from 'next/navigation'
 import api from '@/services/api'
 import { getPvId } from '@/lib/pointVente'
-import VenteEntryDrawer from '@/components/Ventes/VenteEntryDrawer'
 import type { FilterState } from '@/components/ResponsiveDataTable/ColumnFilterDropdown'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>
 
 function VentesPageContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const { showToast } = useToast()
 
@@ -38,9 +39,8 @@ function VentesPageContent() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailData, setDetailData] = useState<AnyRecord | null>(null)
   const [selectedRow, setSelectedRow] = useState<AnyRecord | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
 
-  const [preloadedFromStock, setPreloadedFromStock] = useState(false)
+  const [columnFilters, setColumnFilters] = useState<Record<string, FilterState>>({})
 
   const [filters, setFilters] = useState({
     q: '',
@@ -98,13 +98,6 @@ function VentesPageContent() {
 
   useEffect(() => { fetchVentes() }, [filters, fetchVentes])
 
-  // Handle preloading from stock (via search params)
-  useEffect(() => {
-    if ((fromLotId || fromPvId) && !preloadedFromStock) {
-      setCreateOpen(true)
-      setPreloadedFromStock(true)
-    }
-  }, [fromLotId, fromPvId, preloadedFromStock])
 
   const handleRowClick = async (row: AnyRecord) => {
     setSelectedRow(row)
@@ -146,31 +139,33 @@ function VentesPageContent() {
     fetchVentes({ page: 1 })
   }
 
-  // Translate column FilterState map → existing filters state (which drives fetchVentes)
   const handleColumnFiltersChange = useCallback((colFilters: Record<string, FilterState>) => {
+    setColumnFilters(colFilters)
     setFilters(prev => {
       const next = { ...prev }
 
-      // Date
+      // Date column filter
       const dateF = colFilters['date_vente']
-      if (dateF) {
+      if (dateF && dateF.date) {
         if (dateF.date.preset === 'today') {
           const today = new Date().toISOString().slice(0, 10)
-          next.date = { dateMin: today, dateMax: today }
+          next.date = { dateMin: today, dateMax: today, mode: 'jour', day: today }
         } else if (dateF.date.preset === 'week') {
           const now = new Date()
           const mon = new Date(now)
           mon.setDate(now.getDate() - now.getDay() + 1)
           const sun = new Date(mon)
           sun.setDate(mon.getDate() + 6)
-          next.date = { dateMin: mon.toISOString().slice(0, 10), dateMax: sun.toISOString().slice(0, 10) }
+          next.date = { dateMin: mon.toISOString().slice(0, 10), dateMax: sun.toISOString().slice(0, 10), mode: 'semaine' }
         } else if (dateF.date.preset === 'month') {
           const now = new Date()
           const first = new Date(now.getFullYear(), now.getMonth(), 1)
           const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-          next.date = { dateMin: first.toISOString().slice(0, 10), dateMax: last.toISOString().slice(0, 10) }
+          next.date = { dateMin: first.toISOString().slice(0, 10), dateMax: last.toISOString().slice(0, 10), mode: 'mois' }
         } else if (dateF.date.preset === 'custom' && (dateF.date.from || dateF.date.to)) {
-          next.date = { dateMin: dateF.date.from, dateMax: dateF.date.to }
+          next.date = { dateMin: dateF.date.from, dateMax: dateF.date.to, mode: 'fourchette', start: dateF.date.from, end: dateF.date.to }
+        } else if ((dateF as any).dateMin || (dateF as any).dateMax) {
+          next.date = dateF as any
         } else {
           next.date = null
         }
@@ -178,26 +173,32 @@ function VentesPageContent() {
         next.date = null
       }
 
-      // Point de vente (single value for now — backend accepts one id_point_vente)
+      // Point de vente select
       const pvF = colFilters['point_vente_nom']
-      if (pvF && pvF.select.length > 0) {
+      if (pvF && pvF.select && pvF.select.length > 0) {
         const matched = pointsDeVente.find(pv => pvF.select.includes(pv.nom))
-        next.id_point_vente = matched ? getPvId(matched) : ''
+        next.id_point_vente = matched ? String(getPvId(matched)) : ''
       } else {
-        next.id_point_vente = prev.id_point_vente  // keep header-bar value untouched
+        next.id_point_vente = ''
       }
 
-      // Statut (single value for now)
+      // Statut select
       const statutF = colFilters['statut']
-      if (statutF && statutF.select.length > 0) {
+      if (statutF && statutF.select && statutF.select.length > 0) {
         next.statut = statutF.select[0]
       } else {
-        next.statut = prev.statut  // keep header-bar value untouched
+        next.statut = ''
       }
 
       return next
     })
   }, [pointsDeVente])
+
+  const clearColumnFilter = (field: string) => {
+    const next = { ...columnFilters }
+    delete next[field]
+    handleColumnFiltersChange(next)
+  }
 
   const handleCloseDetail = () => { setDetailOpen(false); setSelectedRow(null); setDetailData(null) }
 
@@ -211,25 +212,58 @@ function VentesPageContent() {
     }
   };
 
+  const STATUT_LETTER: Record<string, string> = { en_attente_paiement: 'A', payee: 'P', annulee: 'X', retournee: 'R' }
+
   const atomiqueColumns = [
-    { field: 'date_vente', headerName: 'Date', width: '140px', minWidth: '120px', sortable: true, filterable: true, filterKind: 'date' as const,
-      renderCell: (row: AnyRecord) => row.date_vente ? new Date(row.date_vente).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-' },
-    { field: 'point_vente_nom', headerName: 'Point de vente', width: '180px', minWidth: '150px', sortable: true, filterable: true, filterKind: 'select' as const, filterOptions: pointsDeVente.map(pv => pv.nom),
-      renderCell: (row: AnyRecord) => <span className="font-medium text-slate-900 dark:text-white">{row.point_vente_nom || `PV #${row.id_point_vente}`}</span> },
-    { field: 'libelle_produit', headerName: 'Produit / lot', width: '200px', minWidth: '160px', sortable: true,
-      renderCell: (row: AnyRecord) => <span className="text-slate-900 dark:text-white">{row.libelle_produit || `Lot #${row.id_lot}`}</span> },
-    { field: 'collaborateur_nom', headerName: 'Collaborateur', width: '160px', minWidth: '140px', sortable: true,
-      renderCell: (row: AnyRecord) => <span className="text-slate-700 dark:text-slate-200">{row.collaborateur_nom || '-'}</span> },
-    { field: 'quantite_vendue', headerName: 'Quantité', width: '90px', minWidth: '80px', sortable: true, filterable: true, filterKind: 'numeric' as const,
-      renderCell: (row: AnyRecord) => <span className="text-right block">{row.quantite_vendue}</span> },
-    { field: 'montant_ht', headerName: 'Montant ligne', width: '130px', minWidth: '120px', sortable: true, filterable: true, filterKind: 'numeric' as const,
-      renderCell: (row: AnyRecord) => <span className="font-semibold text-slate-900 dark:text-white block text-right">{row.montant_ht ? `${Number(row.montant_ht).toLocaleString('fr-FR')} Ar` : '-'}</span> },
-    { field: 'montant_marge', headerName: 'Marge', width: '120px', minWidth: '100px', sortable: true, filterable: true, filterKind: 'numeric' as const,
-      renderCell: (row: AnyRecord) => <span className="font-medium text-green-600 dark:text-green-400 block text-right">{row.montant_marge ? `${Number(row.montant_marge).toLocaleString('fr-FR')} Ar` : '-'}</span> },
-    { field: 'statut', headerName: 'Statut', width: '130px', minWidth: '110px', sortable: true, filterable: true, filterKind: 'select' as const,
+    {
+      field: 'libelle_produit', headerName: 'Produit / Contexte', width: '240px', minWidth: '180px', sortable: true, filterable: true, filterKind: 'text' as const,
+      renderCell: (row: AnyRecord) => (
+        <div>
+          <div className="font-semibold text-slate-900 dark:text-white truncate max-w-[220px]">{row.libelle_produit || `Lot #${row.id_lot}`}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{row.point_vente_nom || `PV #${row.id_point_vente}`} · {row.collaborateur_nom || '-'}</div>
+        </div>
+      )
+    },
+    {
+      field: 'montant_ht', headerName: 'Qté / Montant', width: '160px', minWidth: '130px', sortable: true, filterable: true, filterKind: 'numeric' as const,
+      renderCell: (row: AnyRecord) => (
+        <div className="text-right">
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">
+            {row.quantite_vendue} x {row.montant_ht ? `${Number(row.montant_ht).toLocaleString('fr-FR')} Ar` : '-'}
+          </div>
+          <div className="text-xs text-green-600 dark:text-green-400">
+            Marge: {row.montant_marge ? `${Number(row.montant_marge).toLocaleString('fr-FR')} Ar` : '-'}
+          </div>
+        </div>
+      )
+    },
+    {
+      field: 'date_vente', headerName: 'Dates', width: '180px', minWidth: '140px', sortable: true, filterable: true, filterKind: 'date' as const,
+      renderCell: (row: AnyRecord) => (
+        <div>
+          <div className="font-medium text-slate-900 dark:text-white">
+            {row.date_vente ? new Date(row.date_vente).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            Par Admin #{row.enregistre_par_admin_id}
+          </div>
+        </div>
+      )
+    },
+    {
+      field: 'statut', headerName: 'Statut', width: '60px', minWidth: '40px', sortable: true, filterable: true, filterKind: 'select' as const,
       filterOptions: ['en_attente_paiement', 'payee', 'annulee', 'retournee'],
-      renderCell: (row: AnyRecord) => <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatutBadgeClass(row.statut)}`}>{formatStatut(row.statut)}</span> },
-    { field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
+      renderCell: (row: AnyRecord) => (
+        <span
+          title={formatStatut(row.statut)}
+          className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${getStatutBadgeClass(row.statut)}`}
+        >
+          {STATUT_LETTER[row.statut] || '?'}
+        </span>
+      )
+    },
+    {
+      field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
       getActions: (row: AnyRecord) => [
         { label: 'Voir détails', onClick: () => handleRowClick(row) },
         {
@@ -241,25 +275,59 @@ function VentesPageContent() {
             }
           }
         }
-      ]}
+      ]
+    }
   ]
 
   const aggregeColumns = [
-    { field: 'date_vente', headerName: 'Date', width: '140px', minWidth: '120px', sortable: true,
-      renderCell: (row: AnyRecord) => row.date_vente ? new Date(row.date_vente).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-' },
-    { field: 'point_vente_nom', headerName: 'Point de vente', width: '180px', minWidth: '150px', sortable: true,
-      renderCell: (row: AnyRecord) => <span className="font-medium text-slate-900 dark:text-white">{row.point_vente_nom || `PV #${row.id_point_vente}`}</span> },
-    { field: 'client_nom', headerName: 'Client', width: '180px', minWidth: '150px', sortable: true,
-      renderCell: (row: AnyRecord) => <span className="text-slate-700 dark:text-slate-200">{row.client_nom || 'Client anonyme'}</span> },
-    { field: 'montant_total', headerName: 'Montant total', width: '140px', minWidth: '120px', sortable: true,
-      renderCell: (row: AnyRecord) => <span className="font-semibold text-slate-900 dark:text-white">{row.montant_total ? `${Number(row.montant_total).toLocaleString('fr-FR')} Ar` : '-'}</span> },
-    { field: 'montant_marge', headerName: 'Marge', width: '120px', minWidth: '100px', sortable: true,
-      renderCell: (row: AnyRecord) => <span className="font-medium text-green-600 dark:text-green-400">{row.montant_marge ? `${Number(row.montant_marge).toLocaleString('fr-FR')} Ar` : '-'}</span> },
-    { field: 'statut', headerName: 'Statut', width: '130px', minWidth: '110px', sortable: true,
-      renderCell: (row: AnyRecord) => <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatutBadgeClass(row.statut)}`}>{formatStatut(row.statut)}</span> },
-    { field: 'cree_par_nom', headerName: 'Créé par', width: '150px', minWidth: '130px',
-      renderCell: (row: AnyRecord) => <span className="text-xs text-slate-600 dark:text-slate-400">{row.cree_par_nom || '-'}</span> },
-    { field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
+    {
+      field: 'client_nom', headerName: 'Client / Contexte', width: '240px', minWidth: '180px', sortable: true,
+      renderCell: (row: AnyRecord) => (
+        <div>
+          <div className="font-semibold text-slate-900 dark:text-white truncate max-w-[220px]">{row.client_nom || 'Client anonyme'}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{row.point_vente_nom || `PV #${row.id_point_vente}`}</div>
+        </div>
+      )
+    },
+    {
+      field: 'montant_total', headerName: 'Montant', width: '160px', minWidth: '130px', sortable: true,
+      renderCell: (row: AnyRecord) => (
+        <div className="text-right">
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">
+            {row.montant_total ? `${Number(row.montant_total).toLocaleString('fr-FR')} Ar` : '-'}
+          </div>
+          <div className="text-xs text-green-600 dark:text-green-400">
+            Marge: {row.montant_marge ? `${Number(row.montant_marge).toLocaleString('fr-FR')} Ar` : '-'}
+          </div>
+        </div>
+      )
+    },
+    {
+      field: 'date_vente', headerName: 'Dates', width: '180px', minWidth: '140px', sortable: true,
+      renderCell: (row: AnyRecord) => (
+        <div>
+          <div className="font-medium text-slate-900 dark:text-white">
+            {row.date_vente ? new Date(row.date_vente).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            Créé par {row.cree_par_nom || '-'}
+          </div>
+        </div>
+      )
+    },
+    {
+      field: 'statut', headerName: 'Statut', width: '60px', minWidth: '40px', sortable: true,
+      renderCell: (row: AnyRecord) => (
+        <span
+          title={formatStatut(row.statut)}
+          className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${getStatutBadgeClass(row.statut)}`}
+        >
+          {STATUT_LETTER[row.statut] || '?'}
+        </span>
+      )
+    },
+    {
+      field: 'actions', headerName: 'Actions', width: '80px', minWidth: '70px',
       getActions: (row: AnyRecord) => [
         { label: 'Voir détails', onClick: () => handleRowClick(row) },
         {
@@ -271,7 +339,8 @@ function VentesPageContent() {
             }
           }
         }
-      ]}
+      ]
+    }
   ]
 
   return (
@@ -289,7 +358,7 @@ function VentesPageContent() {
               </div>
             </div>
             <div className="flex justify-end">
-              <button type="button" onClick={() => setCreateOpen(true)}
+              <button type="button" onClick={() => router.push('/ventes/nouvelle')}
                 className="inline-flex items-center justify-center px-3 md:px-4 py-2 rounded-lg bg-primary hover:bg-primary-strong text-white text-sm font-medium transition-colors">
                 <span className="text-lg leading-none mr-1">+</span><span>Nouvelle vente</span>
               </button>
@@ -339,7 +408,7 @@ function VentesPageContent() {
               </button>
             </div>
           </div>
-          {(filters.q || filters.id_point_vente || filters.id_collaborateur.length > 0 || filters.statut || filters.date) && (
+          {(filters.q || filters.id_point_vente || filters.id_collaborateur.length > 0 || filters.statut || filters.date || Object.keys(columnFilters).length > 0) && (
             <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
               <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Filtres actifs :</span>
               {filters.q && (
@@ -351,7 +420,7 @@ function VentesPageContent() {
                 const pv = pointsDeVente.find(p => getPvId(p) === String(filters.id_point_vente))
                 return pv ? (
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-primary/15">
-                    PV: {pv.nom}<button onClick={() => setFilters(prev => ({ ...prev, id_point_vente: '' }))} className="hover:text-primary-strong dark:hover:text-primary">×</button>
+                    PV: {pv.nom}<button onClick={() => { setFilters(prev => ({ ...prev, id_point_vente: '' })); clearColumnFilter('point_vente_nom') }} className="hover:text-primary-strong dark:hover:text-primary">×</button>
                   </span>
                 ) : null
               })()}
@@ -365,14 +434,22 @@ function VentesPageContent() {
               })}
               {filters.statut && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                  Statut: {formatStatut(filters.statut)}<button onClick={() => setFilters(prev => ({ ...prev, statut: '' }))} className="hover:text-purple-900 dark:hover:text-purple-100">×</button>
+                  Statut: {formatStatut(filters.statut)}<button onClick={() => { setFilters(prev => ({ ...prev, statut: '' })); clearColumnFilter('statut') }} className="hover:text-purple-900 dark:hover:text-purple-100">×</button>
                 </span>
               )}
               {filters.date && (
                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
-                  Période: {filters.date.dateMin} - {filters.date.dateMax}<button onClick={() => setFilters(prev => ({ ...prev, date: null }))} className="hover:text-orange-900 dark:hover:text-orange-100">×</button>
+                  Période: {filters.date.dateMin} - {filters.date.dateMax}<button onClick={() => { setFilters(prev => ({ ...prev, date: null })); clearColumnFilter('date_vente') }} className="hover:text-orange-900 dark:hover:text-orange-100">×</button>
                 </span>
               )}
+              {Object.entries(columnFilters).map(([field, state]) => {
+                if (field === 'point_vente_nom' || field === 'statut' || field === 'date_vente') return null
+                return (
+                  <span key={field} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    {field}: {state.text || (state.select && state.select.join(', ')) || (state.numeric && `${state.numeric.min}-${state.numeric.max}`) || 'Filtre'}<button onClick={() => clearColumnFilter(field)} className="hover:text-blue-900 dark:hover:text-blue-100">×</button>
+                  </span>
+                )
+              })}
             </div>
           )}
         </div>
@@ -463,16 +540,6 @@ function VentesPageContent() {
         </Drawer>
       )}
 
-      <VenteEntryDrawer
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        collaborateurs={collaborateurs.map(c => ({ id_collaborateur: c.id_collaborateur, nom: c.nom }))}
-        pointsVente={pointsDeVente.map(pv => ({ id: getPvId(pv), nom: pv.nom }))}
-        initialPvId={fromPvId || ''}
-        initialLotId={fromLotId || ''}
-        onSyncSuccess={handleVenteSyncSuccess}
-        onSyncError={(msg) => showToast(msg, 'info')}
-      />
     </div>
   )
 }

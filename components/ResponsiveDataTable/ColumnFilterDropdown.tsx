@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import DateRangeFilter from '@/components/DateRangeFilter'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,15 +53,13 @@ export interface ColumnFilterDef {
 export function FilterIcon({ active }: { active: boolean }) {
   return (
     <svg
-      className={`w-3.5 h-3.5 transition-colors ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}
-      viewBox="0 0 20 20"
-      fill="currentColor"
+      width="11"
+      height="11"
+      viewBox="0 0 11 11"
+      fill="none"
+      className={`transition-colors ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}
     >
-      <path
-        fillRule="evenodd"
-        d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L13 10.414V15a1 1 0 01-.553.894l-4 2A1 1 0 017 17v-6.586L3.293 6.707A1 1 0 013 6V3z"
-        clipRule="evenodd"
-      />
+      <path d="M1 2h9M3 5.5h5M5 9h1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )
 }
@@ -291,7 +290,20 @@ export function ColumnFilterDropdown({
       </div>
 
       {/* Filter body */}
-      {kind === 'date' && <DateFilter state={state} onChange={onChange} />}
+      {kind === 'date' && (
+        <DateRangeFilter
+          value={state.date as any}
+          onChange={(v) => {
+            onChange({ ...state, date: (v || { preset: '', from: '', to: '' }) as any })
+            if (v) onApply()
+          }}
+          open={true}
+          onOpenChange={(v) => { if (!v) onClose() }}
+          hideTrigger
+          hideTargetSelect
+          defaultTarget={col.field}
+        />
+      )}
       {kind === 'numeric' && <NumericFilter state={state} onChange={onChange} />}
       {kind === 'select' && (
         <SelectFilter state={state} options={col.filterOptions || []} onChange={onChange} />
