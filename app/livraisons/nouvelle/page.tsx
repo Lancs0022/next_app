@@ -66,18 +66,18 @@ export default function NouvelleLivraisonPage() {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex flex-col items-center justify-center bg-slate-900 text-slate-400">
+      <div className="h-[calc(100vh-4rem)] flex flex-col items-center justify-center bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400">
         Chargement...
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-slate-900 text-slate-100">
-      <div className="px-4 py-3 border-b border-slate-700 shrink-0 flex items-center justify-between">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-between">
         <button
           onClick={() => router.push('/stock')}
-          className="text-sm text-slate-300 hover:text-white flex items-center gap-2"
+          className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-2"
         >
           ← Retour au stock
         </button>

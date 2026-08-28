@@ -98,10 +98,10 @@ export default function DynamicEntrySession({
   }
 
   return (
-    <div className="flex flex-col h-full min-h-[480px] bg-slate-900 text-slate-100 overflow-hidden rounded-lg border border-slate-700">
-      <header className="bg-slate-800 border-b border-slate-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+    <div className="flex flex-col h-full min-h-[480px] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+      <header className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-4 flex-wrap">
-          <h1 className="text-sm text-slate-100 font-medium">
+          <h1 className="text-sm text-slate-900 dark:text-slate-100 font-medium">
             {title} - {formatTitleDate()}
           </h1>
           <SyncStatusIndicator status={session.syncStatus} />
@@ -127,14 +127,14 @@ export default function DynamicEntrySession({
             type="button"
             onClick={session.validateSession}
             disabled={session.tabs.length === 0}
-            className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors border border-slate-600 disabled:opacity-50"
+            className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs rounded transition-colors border border-slate-300 dark:border-slate-600 disabled:opacity-50"
           >
             Valider la session
           </button>
         </div>
       </header>
 
-      <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
+      <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
         <FormField label="Date de livraison">
           <input
             type="date"
@@ -151,7 +151,7 @@ export default function DynamicEntrySession({
           placeholder="Sélectionner"
         />
       </div>
-      <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
+      <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
         <FormField label="Référence">
           <input
             type="text"
@@ -193,7 +193,7 @@ export default function DynamicEntrySession({
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full min-h-[200px] p-8 text-center">
-            <p className="text-sm text-slate-400 mb-4">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
               Aucun collaborateur sélectionné. Ajoutez un collaborateur pour commencer la saisie.
             </p>
             {canAddMore && (

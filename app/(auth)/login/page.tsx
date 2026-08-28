@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/Toast/ToastContainer'
+import { logAction } from '@/lib/logger'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,6 +15,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    logAction('Login → Se connecter', { email })
     setLoading(true)
     const toastId = showToast('Connexion en cours...', 'loading')
     try {

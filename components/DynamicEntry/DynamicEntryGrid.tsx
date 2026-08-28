@@ -38,7 +38,7 @@ const alignClass = (align: ColumnDef['align']) => {
 }
 
 const inputClass = (align: ColumnDef['align']) =>
-  `w-full px-2 py-2 bg-transparent border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs ${alignClass(align)}`
+  `w-full px-2 py-2 bg-transparent border border-slate-300 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs ${alignClass(align)}`
 
 function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
   return (
@@ -105,7 +105,7 @@ export default function DynamicEntryGrid({
     }
     if (col.type === 'computed') {
       return (
-        <span className="text-slate-200 font-medium text-sm">
+        <span className="text-slate-700 dark:text-slate-200 font-medium text-sm">
           {formatAr(computeRowTotal(row, module))} Ar
         </span>
       )
@@ -116,7 +116,7 @@ export default function DynamicEntryGrid({
           type="button"
           onClick={() => onRemoveRow(row.id)}
           disabled={disabled}
-          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded transition-colors disabled:opacity-50"
+          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors disabled:opacity-50"
           title="Supprimer la ligne"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,76 +143,76 @@ export default function DynamicEntryGrid({
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-900 min-h-0">
+    <div className="h-full flex flex-col bg-white dark:bg-slate-900 min-h-0">
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile: card layout */}
         <div className="flex-1 overflow-auto min-h-0 md:hidden p-3 space-y-3">
-        {rows.map((row, index) => (
-          <div key={`${row.id}-${index}`} className="rounded-lg border border-slate-700 bg-slate-800/80 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400">Ligne {index + 1}</span>
-              <button
-                type="button"
-                onClick={() => onRemoveRow(row.id)}
-                disabled={disabled}
-                className="text-xs text-red-400 hover:text-red-300"
-              >
-                Supprimer
-              </button>
-            </div>
-            {displayColumns.map(col => (
-              <div key={`${row.id}-m-${String(col.key)}`}>
-                <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">{col.header}</label>
-                {renderField(row, col)}
+          {rows.map((row, index) => (
+            <div key={`${row.id}-${index}`} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Ligne {index + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => onRemoveRow(row.id)}
+                  disabled={disabled}
+                  className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                >
+                  Supprimer
+                </button>
               </div>
-            ))}
-          </div>
-        ))}
-      </div>
+              {displayColumns.map(col => (
+                <div key={`${row.id}-m-${String(col.key)}`}>
+                  <label className="block text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-1">{col.header}</label>
+                  {renderField(row, col)}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
 
-      {/* Desktop: resizable table */}
-      <div className="hidden md:block flex-1 overflow-auto min-h-0">
-        <table className="w-full text-xs border-collapse" style={{ tableLayout: 'fixed' }}>
-          <thead className="sticky top-0 bg-slate-800 border-b border-slate-700 z-10">
-            <tr>
-              <th className="relative px-2 py-3 text-left text-slate-300" style={{ width: 32 }}>#</th>
-              {displayColumns.map((col, idx) => {
-                const key = colKeyForResize(col)
-                return (
-                  <th
-                    key={`${col.key}-${col.header}-${idx}`}
-                    className={`relative px-3 py-3 text-slate-300 ${alignClass(col.align)}`}
-                    style={{ width: getWidth(key) }}
-                  >
-                    {col.header}
-                    <ResizeHandle onMouseDown={(e) => startResize(key, e.clientX)} />
-                  </th>
-                )
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              <tr key={`${row.id}-${index}`} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
-                <td className="px-2 py-3 text-slate-400 text-center">{index + 1}</td>
-                {displayColumns.map((col, colIdx) => (
-                  <td key={`${row.id}-${String(col.key)}-${colIdx}`} className="px-3 py-3 align-top">
-                    {renderField(row, col)}
-                  </td>
-                ))}
+        {/* Desktop: resizable table */}
+        <div className="hidden md:block flex-1 overflow-auto min-h-0">
+          <table className="w-full text-xs border-collapse" style={{ tableLayout: 'fixed' }}>
+            <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-10">
+              <tr>
+                <th className="relative px-2 py-3 text-left text-slate-500 dark:text-slate-300" style={{ width: 32 }}>#</th>
+                {displayColumns.map((col, idx) => {
+                  const key = colKeyForResize(col)
+                  return (
+                    <th
+                      key={`${col.key}-${col.header}-${idx}`}
+                      className={`relative px-3 py-3 text-slate-500 dark:text-slate-300 font-semibold ${alignClass(col.align)}`}
+                      style={{ width: getWidth(key) }}
+                    >
+                      {col.header}
+                      <ResizeHandle onMouseDown={(e) => startResize(key, e.clientX)} />
+                    </th>
+                  )
+                })}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={`${row.id}-${index}`} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-2 py-3 text-slate-400 dark:text-slate-500 text-center">{index + 1}</td>
+                  {displayColumns.map((col, colIdx) => (
+                    <td key={`${row.id}-${String(col.key)}-${colIdx}`} className="px-3 py-3 align-top">
+                      {renderField(row, col)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="p-3 md:p-4 border-t border-slate-700 bg-slate-800 shrink-0">
+      <div className="p-3 md:p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 shrink-0">
         <button
           type="button"
           onClick={onAddRow}
           disabled={disabled}
-          className="w-full md:w-auto px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded transition-colors flex items-center justify-center gap-2 border border-slate-600 disabled:opacity-50"
+          className="w-full md:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs rounded transition-colors flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-600 disabled:opacity-50"
         >
           <PlusIcon className="w-4 h-4" />
           Ajouter une ligne (F2)

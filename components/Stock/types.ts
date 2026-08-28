@@ -197,6 +197,7 @@ export function mapToLotActif(
         prix_initial: Number(item.prix_initial),
         quantite_actuelle: Number(item.quantite_disponible ?? 0),
         quantite_initiale: Number(item.quantite_initiale),
+        quantite_vendue: Number(item.quantite_vendue ?? 0),
         ventes_fermees: item.ventes_fermees,
         chiffre_affaires: Number(item.chiffre_affaires ?? item.chiffreAffaires ?? 0),
       };

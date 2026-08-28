@@ -14,6 +14,7 @@ import { useToast } from '@/components/Toast/ToastContainer'
 import { PlusIcon } from '@/components/icons/Icons'
 import AjouterMarchandisesModal from '@/components/Ventes/AjouterMarchandisesModal'
 import { getPvId } from '@/lib/pointVente'
+import { logAction } from '@/lib/logger'
 
 interface Collaborateur {
   id_collaborateur: string | number
@@ -148,6 +149,11 @@ function NouvelleVentePageContent() {
   }
 
   const handleValidate = () => {
+    logAction('NouvelleVente → Valider la vente', {
+      pdv: session.meta.id_pdv,
+      client: session.meta.id_client,
+      nbLignes: session.selectedLines.length,
+    })
     if (clientAnonymous) {
       const divers = clients.find(c => c.nom === 'Client' && c.prenom === 'Divers')
         || clients.find(c => c.nom.toLowerCase().includes('divers'))
@@ -188,18 +194,18 @@ function NouvelleVentePageContent() {
     : clientOptions
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-slate-900 text-slate-100">
-      <div className="px-4 py-3 border-b border-slate-700 shrink-0 flex items-center justify-between">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-between">
         <button
           onClick={() => router.push('/ventes')}
-          className="text-sm text-slate-300 hover:text-white flex items-center gap-2"
+          className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-2"
         >
           ← Retour aux ventes
         </button>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <header className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-medium">Saisie Globale des Ventes</h2>
             <SyncStatusIndicator status={session.hasPendingSync() ? 'pending' : 'synced'} />
@@ -207,7 +213,10 @@ function NouvelleVentePageContent() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => setResetOpen(true)}
+              onClick={() => {
+              logAction('NouvelleVente → Réinitialiser')
+              setResetOpen(true)
+            }}
               className="px-3 py-1.5 text-xs font-medium rounded border text-white"
               style={{ backgroundColor: '#EF4444', borderColor: '#DC2626' }}
             >
@@ -223,7 +232,7 @@ function NouvelleVentePageContent() {
           </div>
         </header>
 
-        <div className="bg-slate-800 border-b border-slate-700 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 shrink-0 items-start">
+        <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0 items-start">
           <FormField label="Date de vente">
             <input
               type="date"
@@ -232,16 +241,6 @@ function NouvelleVentePageContent() {
               className={formInputClass}
             />
           </FormField>
-          <TypeaheadSelect
-            label="Point de vente"
-            options={pvOptions}
-            value={session.meta.id_pdv}
-            onChange={val => {
-              session.setMeta(prev => ({ ...prev, id_pdv: val }))
-              session.setFilterCollaborateur('')
-            }}
-            placeholder="Sélectionner"
-          />
           <div>
             <TypeaheadSelect
               label="Client"
@@ -266,10 +265,13 @@ function NouvelleVentePageContent() {
           </div>
         </div>
 
-        <div className="px-4 py-3 border-b border-slate-700 shrink-0">
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
           <button
             type="button"
-            onClick={() => setAjouterMarchandisesOpen(true)}
+            onClick={() => {
+              logAction('NouvelleVente → Ajouter marchandises')
+              setAjouterMarchandisesOpen(true)
+            }}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg flex items-center gap-2"
           >
             <PlusIcon className="w-4 h-4" />
@@ -291,13 +293,15 @@ function NouvelleVentePageContent() {
                     <p className="text-xs text-slate-400">{line.collaborateur_nom}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400">Qté</label>
+                    <label className="text-xs text-slate-400">
+                      Qté{line.unite_code && line.unite_code !== 'U' ? ` (${line.unite_code})` : ''}
+                    </label>
                     <input
                       type="text"
-                      inputMode="numeric"
+                      inputMode={line.est_decimal ? 'decimal' : 'numeric'}
                       value={line.quantite}
                       onChange={e => session.updateLine(line.id_lot, 'quantite', e.target.value)}
-                      className="w-16 px-2 py-1.5 text-xs border border-slate-600 rounded bg-slate-800 text-slate-200 text-center"
+                      className="w-20 px-2 py-1.5 text-xs border border-slate-600 rounded bg-slate-800 text-slate-200 text-center"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -371,6 +375,12 @@ function NouvelleVentePageContent() {
         collaborateurs={collabOptions}
         filterCollaborateur={session.filterCollaborateur}
         onFilterCollaborateurChange={session.setFilterCollaborateur}
+        pointsVente={pvOptions}
+        selectedPdv={session.meta.id_pdv}
+        onPdvChange={val => {
+          session.setMeta(prev => ({ ...prev, id_pdv: val }))
+          session.setFilterCollaborateur('')
+        }}
       />
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import api from '@/services/api'
 import { createClientUuid, clearSessionStorage } from '@/lib/dynamicEntry/storage'
 import { useOfflineSyncQueue } from '@/hooks/useOfflineSyncQueue'
@@ -18,6 +18,12 @@ export interface LotRow {
   id_point_vente?: number
   point_vente_nom?: string
   categorie_produit?: string
+  // Unité de mesure
+  id_unite?: number | null
+  unite_code?: string | null
+  unite_label?: string | null
+  est_decimal?: boolean
+  precision?: number
 }
 
 export interface SelectedLine {
@@ -30,6 +36,11 @@ export interface SelectedLine {
   quantite: string
   reduction: string
   maxQty: number
+  // Unité de mesure — propagée depuis LotRow pour l'affichage des inputs
+  unite_code: string
+  unite_label: string
+  est_decimal: boolean
+  precision: number
 }
 
 export type LotSortField = 'libelle_produit' | 'collaborateur_nom' | 'prix_initial' | 'quantite_disponible'
@@ -47,6 +58,13 @@ interface UseVenteEntrySessionOptions {
 }
 
 export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEntrySessionOptions = {}) {
+  // Stable ref so callbacks that depend on onSyncError/onSyncSuccess never
+  // get a new identity just because the caller passed a new inline arrow.
+  const onSyncErrorRef = useRef(onSyncError)
+  const onSyncSuccessRef = useRef(onSyncSuccess)
+  useEffect(() => { onSyncErrorRef.current = onSyncError }, [onSyncError])
+  useEffect(() => { onSyncSuccessRef.current = onSyncSuccess }, [onSyncSuccess])
+
   const [meta, setMeta] = useState<VenteMeta>(() => ({
     date: new Date().toISOString().slice(0, 10),
     id_pdv: '',
@@ -63,10 +81,12 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
 
   const { enqueue, processQueue, hasPendingSync } = useOfflineSyncQueue({
     module: 'vente',
-    onSyncSuccess,
-    onSyncError,
+    onSyncSuccess: useCallback(() => onSyncSuccessRef.current?.(), []),
+    onSyncError: useCallback((msg: string) => onSyncErrorRef.current?.(msg), []),
   })
 
+  // loadLots has no dependency on onSyncError thanks to the ref — its identity
+  // stays stable across renders, preventing the useEffect below from looping.
   const loadLots = useCallback(async (pvId: string): Promise<LotRow[]> => {
     if (!pvId) {
       setLots([])
@@ -82,13 +102,13 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
       return loaded
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
-      onSyncError?.(err?.response?.data?.error || err?.message || 'Erreur chargement des lots')
+      onSyncErrorRef.current?.(err?.response?.data?.error || err?.message || 'Erreur chargement des lots')
       setLots([])
       return []
     } finally {
       setLotsLoading(false)
     }
-  }, [onSyncError])
+  }, []) // no external deps — uses stable ref for error reporting
 
   useEffect(() => {
     if (meta.id_pdv) loadLots(meta.id_pdv)
@@ -156,6 +176,10 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
           quantite: '1',
           reduction: '0',
           maxQty: Number(lot.quantite_disponible || 0),
+          unite_code: lot.unite_code || 'U',
+          unite_label: lot.unite_label || 'Unité',
+          est_decimal: lot.est_decimal ?? false,
+          precision: lot.precision ?? 0,
         }
       }
       return next
@@ -166,7 +190,17 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
     setSelected(prev => {
       const line = prev[idLot]
       if (!line) return prev
-      return { ...prev, [idLot]: { ...line, [field]: value.replace(/[^0-9]/g, '') } }
+      let cleaned: string
+      if (field === 'quantite' && line.est_decimal) {
+        // Autoriser chiffres, point et virgule (normalise en point)
+        cleaned = value.replace(',', '.').replace(/[^0-9.]/g, '')
+        // Empêcher plusieurs points
+        const parts = cleaned.split('.')
+        if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('')
+      } else {
+        cleaned = value.replace(/[^0-9]/g, '')
+      }
+      return { ...prev, [idLot]: { ...line, [field]: cleaned } }
     })
   }, [])
 
@@ -196,17 +230,17 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
 
   const validateVente = useCallback((idClientOverride?: number) => {
     if (!meta.id_pdv) {
-      onSyncError?.('Sélectionnez un point de vente')
+      onSyncErrorRef.current?.('Sélectionnez un point de vente')
       return
     }
     const resolvedClientId = idClientOverride ?? Number(meta.id_client)
     if (!resolvedClientId || Number.isNaN(resolvedClientId)) {
-      onSyncError?.('Sélectionnez un client')
+      onSyncErrorRef.current?.('Sélectionnez un client')
       return
     }
     const validLines = selectedLines.filter(l => Number(l.quantite) > 0)
     if (validLines.length === 0) {
-      onSyncError?.('Sélectionnez au moins un lot avec une quantité')
+      onSyncErrorRef.current?.('Sélectionnez au moins un lot avec une quantité')
       return
     }
 
@@ -236,7 +270,7 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
     processQueue()
     setSelected({})
     setMeta(prev => ({ ...prev, client_uuid: createClientUuid() }))
-  }, [meta, selectedLines, enqueue, processQueue, onSyncError])
+  }, [meta, selectedLines, enqueue, processQueue])
 
   const resetSession = useCallback(() => {
     clearSessionStorage('vente')

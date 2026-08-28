@@ -20,14 +20,13 @@ export const GET = withAuth(
     }
 
     try {
-      // Build where clause
+      // Build where clause — stock_mouvement n'a pas de colonne id_pdv,
+      // le filtrage par PdV passe par le lot lui-même.
       const where: Record<string, unknown> = {
         tenant_id: tenantId,
         id_lot: lotId,
       }
-      if (pdvId !== undefined) {
-        where.id_pdv = pdvId // Corrected typo
-      }
+      // Note: id_pdv ignoré intentionnellement — non présent dans stock_mouvement
 
       const mouvements = await prisma.stockMouvement.findMany({
         where,

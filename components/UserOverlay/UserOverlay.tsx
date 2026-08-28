@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { logAction } from '@/lib/logger'
 
 interface UserOverlayProps {
   isOpen: boolean
@@ -13,7 +13,6 @@ type ModalMode = null | 'profile' | 'password'
 
 const UserOverlay = ({ isOpen, onClose }: UserOverlayProps) => {
   const { currentUser, logout, updateUser } = useAuth()
-  const router = useRouter()
   const overlayRef = useRef<HTMLDivElement>(null)
 
   const [modalMode, setModalMode] = useState<ModalMode>(null)
@@ -43,6 +42,7 @@ const UserOverlay = ({ isOpen, onClose }: UserOverlayProps) => {
 
   // Reset forms when opening a modal
   const openProfile = () => {
+    logAction('UserOverlay → Mon profil')
     setProfileForm({
       nom: currentUser?.nom || '',
       prenom: currentUser?.prenom || '',
@@ -54,6 +54,7 @@ const UserOverlay = ({ isOpen, onClose }: UserOverlayProps) => {
   }
 
   const openPassword = () => {
+    logAction('UserOverlay → Changer mot de passe')
     setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
     setError('')
     setSuccess('')
@@ -123,10 +124,13 @@ const UserOverlay = ({ isOpen, onClose }: UserOverlayProps) => {
     }
   }
 
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
+  const handleLogout = async () => {
+    logAction('UserOverlay → Déconnexion')
     onClose()
+    await logout()
+    // Rechargement complet : vide le state React, invalide le cookie httpOnly,
+    // et affiche le layout /login sans sidebar ni navbar.
+    window.location.replace('/login')
   }
 
   if (!isOpen && !modalMode) return null

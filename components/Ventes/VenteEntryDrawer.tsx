@@ -351,6 +351,12 @@ export default function VenteEntryDrawer({
         collaborateurs={collabOptions}
         filterCollaborateur={session.filterCollaborateur}
         onFilterCollaborateurChange={session.setFilterCollaborateur}
+        pointsVente={pvOptions}
+        selectedPdv={session.meta.id_pdv}
+        onPdvChange={val => {
+          session.setMeta(prev => ({ ...prev, id_pdv: val }))
+          session.setFilterCollaborateur('')
+        }}
       />
     </Drawer>
   )

@@ -125,7 +125,7 @@ export async function listVentesAtomiques(params: VenteQueryParams) {
       id_collaborateur: a.id_collaborateur,
       collaborateur_nom: collabMap[a.id_collaborateur] || '-',
       quantite_vendue: a.quantite_vendue,
-      montant_ht: Number(a.montant_ht ?? a.quantite_vendue * Number(a.prix_initial)),
+      montant_ht: Number(a.montant_ht ?? Number(a.quantite_vendue) * Number(a.prix_initial)),
       montant_marge: a.montant_marge ? Number(a.montant_marge) : null,
       statut: a.vente.statut,
       client_nom: a.vente.id_client ? clientMap[a.vente.id_client] || null : null,
@@ -268,8 +268,8 @@ export async function getVenteDetail(id_vente: number, tenantId: number) {
       id_lot: a.id_lot,
       libelle_produit: idProd ? produitMap[idProd] || `Produit #${idProd}` : `Lot #${a.id_lot}`,
       collaborateur_nom: collabMap[a.id_collaborateur] || '-',
-      quantite_vendue: a.quantite_vendue,
-      montant_ht: Number(a.montant_ht ?? a.quantite_vendue * Number(a.prix_initial)),
+      quantite_vendue: Number(a.quantite_vendue),
+      montant_ht: Number(a.montant_ht ?? Number(a.quantite_vendue) * Number(a.prix_initial)),
       montant_marge: a.montant_marge ? Number(a.montant_marge) : null,
     }
   })
@@ -342,7 +342,7 @@ export async function createVenteDirecte({
   for (const l of lignes) {
     const id_lot = Number(l.id_lot)
     const id_collaborateur = Number(l.id_collaborateur)
-    const quantite_vendue = Number(l.quantite_vendue ?? l.quantite ?? 0)
+    const quantite_vendue = Number(String(l.quantite_vendue ?? l.quantite ?? '0').replace(',', '.'))
     const prix_initial = Number(l.prix_initial ?? l.prix_unitaire ?? 0)
     const marge = Number(l.marge ?? 0)
 
@@ -350,6 +350,8 @@ export async function createVenteDirecte({
       throw httpError(400, 'Chaque ligne doit avoir un lot et une quantité > 0')
     if (!id_collaborateur)
       throw httpError(400, 'Chaque ligne doit avoir un id_collaborateur')
+    if (!Number.isFinite(quantite_vendue))
+      throw httpError(400, `Quantité invalide pour le lot ${id_lot}`)
 
     montant_ht += quantite_vendue * prix_initial
     montant_marge += marge * quantite_vendue
@@ -481,8 +483,8 @@ export async function cancelVente({
   let montant_ht = 0
   let montant_marge = 0
   for (const a of vente.articles) {
-    montant_ht += Number(a.prix_initial) * a.quantite_vendue
-    montant_marge += Number(a.marge) * a.quantite_vendue
+    montant_ht += Number(a.prix_initial) * Number(a.quantite_vendue)
+    montant_marge += Number(a.marge) * Number(a.quantite_vendue)
   }
   const montant_total = montant_ht // simplified: no TVA
 
@@ -510,7 +512,7 @@ export async function cancelVente({
       })
 
       const before_qty = stockActuel ? Number(stockActuel.quantite) : 0
-      const after_qty = before_qty + a.quantite_vendue // returning stock increases quantity
+      const after_qty = before_qty + Number(a.quantite_vendue) // returning stock increases quantity
 
       // Create stock_mouvement of type annulation_vente
       await tx.stockMouvement.create({

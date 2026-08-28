@@ -22,6 +22,10 @@ interface AjouterMarchandisesModalProps {
   collaborateurs: { value: string; label: string }[]
   filterCollaborateur: string
   onFilterCollaborateurChange: (value: string) => void
+  // Point de vente — géré ici pour cohérence UX
+  pointsVente: { value: string; label: string }[]
+  selectedPdv: string
+  onPdvChange: (value: string) => void
 }
 
 export default function AjouterMarchandisesModal({
@@ -39,6 +43,9 @@ export default function AjouterMarchandisesModal({
   collaborateurs,
   filterCollaborateur,
   onFilterCollaborateurChange,
+  pointsVente,
+  selectedPdv,
+  onPdvChange,
 }: AjouterMarchandisesModalProps) {
   return (
     <Modal
@@ -60,7 +67,17 @@ export default function AjouterMarchandisesModal({
       }
     >
       <div className="space-y-4 flex flex-col h-full max-h-[60vh]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
+        {/* Point de vente — première chose à choisir, conditionne le catalogue */}
+        <TypeaheadSelect
+          label="Point de vente"
+          options={pointsVente}
+          value={selectedPdv}
+          onChange={onPdvChange}
+          placeholder="Sélectionner un point de vente…"
+        />
+
+        {/* Filtres produit / collaborateur — uniquement utiles si un PdV est choisi */}
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 transition-opacity ${!selectedPdv ? 'opacity-40 pointer-events-none' : ''}`}>
           <FormField label="Rechercher un produit">
             <input
               type="search"
@@ -80,15 +97,21 @@ export default function AjouterMarchandisesModal({
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-900 p-1">
-          <LotSelectionTable
-            lots={lots}
-            loading={loading}
-            selected={selected}
-            sortField={sortField}
-            sortDir={sortDir}
-            onToggleSort={onToggleSort}
-            onToggleLot={onToggleLot}
-          />
+          {!selectedPdv ? (
+            <div className="py-10 text-center text-sm text-slate-400">
+              Sélectionne un point de vente pour voir les lots disponibles
+            </div>
+          ) : (
+            <LotSelectionTable
+              lots={lots}
+              loading={loading}
+              selected={selected}
+              sortField={sortField}
+              sortDir={sortDir}
+              onToggleSort={onToggleSort}
+              onToggleLot={onToggleLot}
+            />
+          )}
         </div>
       </div>
     </Modal>

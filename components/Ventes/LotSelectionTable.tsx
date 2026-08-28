@@ -13,6 +13,15 @@ interface LotSelectionTableProps {
   onToggleLot: (lot: LotRow) => void
 }
 
+/** Formate une quantité selon la précision de l'unité et affiche l'unité */
+function fmtQty(qty: number | undefined, lot: LotRow): string {
+  const val = qty ?? 0
+  const precision = lot.precision ?? 0
+  const formatted = precision > 0 ? val.toFixed(precision).replace(/\.?0+$/, '') : String(Math.round(val))
+  const unit = lot.unite_code || ''
+  return unit ? `${formatted} ${unit}` : formatted
+}
+
 function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
   return (
     <svg className={`w-3 h-3 inline ml-1 ${active ? 'text-indigo-400' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +106,7 @@ export default function LotSelectionTable({
                 <div className="flex flex-wrap gap-2 text-xs text-slate-300">
                   <span>{formatAr(Number(lot.prix_initial || 0))} Ar</span>
                   <span>·</span>
-                  <span>Qté: {lot.quantite_disponible ?? 0}</span>
+                  <span>Qté: {fmtQty(lot.quantite_disponible, lot)}</span>
                 </div>
               </div>
             </label>
@@ -144,7 +153,7 @@ export default function LotSelectionTable({
                   <td className="px-3 py-3 text-slate-100">{lot.libelle_produit || `Lot #${lot.id_lot}`}</td>
                   <td className="px-3 py-3 text-slate-300">{lot.collaborateur_nom || '-'}</td>
                   <td className="px-3 py-3 text-right text-slate-200">{formatAr(Number(lot.prix_initial || 0))} Ar</td>
-                  <td className="px-3 py-3 text-right text-slate-200">{lot.quantite_disponible ?? 0}</td>
+                  <td className="px-3 py-3 text-right text-slate-200">{fmtQty(lot.quantite_disponible, lot)}</td>
                 </tr>
               )
             })}

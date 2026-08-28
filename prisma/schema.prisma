@@ -146,26 +146,48 @@ model StockTransfert {
   @@map("stock_transfert")
 }
 
+// ==================== UNITÉS DE MESURE ====================
+
+model UniteDeMesure {
+  id_unite    Int      @id @default(autoincrement())
+  tenant_id   Int
+  code        String   // "U", "KG", "G", "L", "ML", "M", "CM"
+  label       String   // "Unité", "Kilogramme", …
+  est_decimal Boolean  @default(false)
+  precision   Int      @default(0) // nb de décimales à afficher
+  actif       Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  produits    ProduitCatalogue[]
+
+  @@unique([tenant_id, code])
+  @@map("unite_de_mesure")
+}
+
 // ==================== PRODUITS ====================
 
 model ProduitCatalogue {
-  id_produit       Int       @id @default(autoincrement())
+  id_produit       Int            @id @default(autoincrement())
   tenant_id        Int
   id_collaborateur Int
   nom              String
   description      String?
   categorie        String?
   sku              String?
+  /// @deprecated — conservé pour compatibilité lectures ; utiliser id_unite
   unite            String?
-  seuil_alerte     Int?
+  id_unite         Int?
+  seuil_alerte     Decimal?       @db.Decimal(10, 3)
   image_url        String?
-  statut           String    @default("actif") // actif | archive
+  statut           String         @default("actif") // actif | archive
   created_by       Int?
   modified_by      Int?
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
   modified_at      DateTime?
   deleted_at       DateTime?
+
+  unite_mesure     UniteDeMesure? @relation(fields: [id_unite], references: [id_unite])
 
   @@map("produit_catalogue")
 }
@@ -274,7 +296,7 @@ model CommandeLigne {
   id_commande        Int
   id_lot             Int
   id_collaborateur   Int
-  quantite_reservee  Int
+  quantite_reservee  Decimal  @db.Decimal(12, 3)
   prix_initial       Decimal  @db.Decimal(10, 2)
   marge              Decimal  @db.Decimal(10, 2)
   created_at         DateTime @default(now())
@@ -333,7 +355,7 @@ model VenteArticle {
   id_vente          Int
   id_lot            Int
   id_collaborateur  Int
-  quantite_vendue   Int
+  quantite_vendue   Decimal  @db.Decimal(12, 3)
   prix_initial      Decimal  @db.Decimal(10, 2)
   marge             Decimal  @db.Decimal(10, 2)
   montant_ht        Decimal? @db.Decimal(15, 2)
@@ -461,7 +483,7 @@ model RetourCollaborateur {
   id_lot                  Int
   id_collaborateur        Int
   id_utilisateur          Int
-  quantite_retournee      Int
+  quantite_retournee      Decimal   @db.Decimal(12, 3)
   date_retour             DateTime  @default(now())
   motif                   String?
   created_at              DateTime  @default(now())

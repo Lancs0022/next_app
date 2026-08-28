@@ -12,6 +12,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/collaborateurs': 'Collaborateurs',
   '/finance/transactions': 'Transactions',
   '/settings': 'Paramètres',
+  '/settings/unites': 'Unités de mesure',
   '/clients': 'Clients',
   '/abonnements': 'Abonnements',
   '/reports': 'Rapports', // Add reports to titles
@@ -21,9 +22,18 @@ const PAGE_TITLES: Record<string, string> = {
   // ... add any other routes that need specific titles from the Sidebar
 }
 
+/** Routes qui ne doivent jamais avoir la sidebar/navbar */
+const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password']
+
 export default function AdminLayoutClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const title = PAGE_TITLES[pathname] ?? 'PEJAA' // Default title if not found
+
+  // Pages d'authentification — rendu nu, sans shell admin
+  if (AUTH_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'))) {
+    return <>{children}</>
+  }
+
+  const title = PAGE_TITLES[pathname] ?? 'PEJAA'
 
   return (
     <AdminLayout pageTitle={title} activeRoute={pathname}>

@@ -29,6 +29,7 @@ export function LotDetailModal({
   pointsDeVente: Record<string, PointDeVente>;
   onAction?: (actionId: ActionMenuId, lot: LotActif) => void;
 }) {
+  const { showToast } = useToast()
   const [actionsOpen, setActionsOpen] = useState(false)
   const [movements, setMovements] = useState<Array<any>>([])
   const [movementsLoading, setMovementsLoading] = useState(false)
@@ -58,30 +59,25 @@ export function LotDetailModal({
   };
 
   // Fetch stock movements for this lot
-    useEffect(() => {
-      const fetchMovements = async () => {
-        setMovementsLoading(true)
-            try {
-              const params = new URLSearchParams()
-              if (lot.pdvId) {
-                params.append('id_pdv', lot.pdvId.toString())
-              }
-              const res = await api.get(`/stock/lots/${lot.id}/mouvements?${params.toString()}`)
-              setMovements(res.data || [])
-            } catch (err: any) {
-              console.error('Failed to fetch stock movements:', err)
-              const { showToast } = useToast()
-              showToast(err?.response?.data?.error || err?.message || 'Erreur lors du chargement des mouvements de stock', 'error')
-              setMovements([])
-            } finally {
-              setMovementsLoading(false)
-            }
+  useEffect(() => {
+    const fetchMovements = async () => {
+      setMovementsLoading(true)
+      try {
+        const params = new URLSearchParams()
+        if (lot.pdvId) params.append('id_pdv', lot.pdvId.toString())
+        const res = await api.get(`/stock/lots/${lot.id}/mouvements?${params.toString()}`)
+        setMovements(res.data?.data || [])
+      } catch (err: unknown) {
+        const e = err as { response?: { data?: { error?: string } }; message?: string }
+        console.error('Failed to fetch stock movements:', e)
+        showToast(e?.response?.data?.error || e?.message || 'Erreur lors du chargement des mouvements de stock', 'info')
+        setMovements([])
+      } finally {
+        setMovementsLoading(false)
       }
-
-      if (lot.id) {
-        fetchMovements()
-      }
-    }, [lot.id, lot.pdvId])
+    }
+    if (lot.id) fetchMovements()
+  }, [lot.id, lot.pdvId, showToast])
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
@@ -206,56 +202,55 @@ export function LotDetailModal({
             </div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-slate-900/50">
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Prix unitaire initial</p>
-                <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{lot.prix_initial ? lot.prix_initial.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar' : '0 Ar'}</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Prix de vente unitaire</p>
+                <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {((lot.prixInitial || 0) + (lot.marge || 0)).toLocaleString('fr-FR')} Ar
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">dont marge : {(lot.marge || 0).toLocaleString('fr-FR')} Ar</p>
               </div>
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Marge PEJAA</p>
-                <span className="font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400">{lot.marge ? lot.marge.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar' : '0 Ar'}</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Prix fournisseur</p>
+                <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
+                  {(lot.prixInitial || 0).toLocaleString('fr-FR')} Ar
+                </span>
               </div>
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Prix de vente</p>
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{(lot.prix_initial || 0) + (lot.marge || 0)}</span>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Stock actuel / initial</p>
-                <div className="flex items-center">
-                  <span className="font-mono text-sm">{lot.quantite_actuelle}</span>
-                  <span className="mx-1">/</span>
-                  <span className="font-mono text-sm">{lot.quantite_initiale}</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Stock restant</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{fmt(lot.quantiteActuelle)}</span>
+                  <span className="text-slate-400 text-xs">/ {fmt(lot.quantiteInitiale)}</span>
                 </div>
               </div>
               <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Ventes fermées</p>
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-300">{lot.ventes_fermees} unités</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Déjà vendu</p>
+                <span className="font-mono text-sm text-blue-600 dark:text-blue-400 font-semibold">
+                  {fmt(lot.quantiteVendue)}
+                </span>
               </div>
-              {/* NEW: Quantity sold */}
-              <div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1 font-semibold">Quantité vendue</p>
-                <span className="font-mono text-sm text-blue-600 dark:text-blue-400">{lot.quantite_vendue} unités</span>
-              </div>
-              {/* Highlight: Argent généré */}
+
+              {/* Bénéfice dégagé */}
               <div className="sm:col-span-2 mt-1 rounded-lg border border-emerald-300/50 bg-emerald-50/50 dark:border-emerald-500/25 dark:bg-emerald-500/5 px-4 py-3">
                 <p className="text-xs text-emerald-700 dark:text-emerald-400/80 uppercase tracking-widest font-semibold mb-1">
-                  Argent généré par ce lot
+                  Bénéfice dégagé jusqu&apos;ici
                 </p>
                 <p className="font-mono text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300 tracking-tight">
-                  {lot.chiffre_affaires ? lot.chiffre_affaires.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar' : ((lot.quantite_vendue || 0) * ((lot.prix_initial || 0) + (lot.marge || 0))).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Ar'}
+                  {(lot.quantiteVendue * lot.marge).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar
                 </p>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  {`${lot.quantite_vendue} unités vendues · ${((lot.prix_initial || 0) + (lot.marge || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar / unité`}
+                  {fmt(lot.quantiteVendue)} vendu{lot.quantiteVendue > 1 ? 's' : ''} × {lot.marge.toLocaleString('fr-FR')} Ar de marge
                 </p>
               </div>
-              <div className="sm:col-span-2 rounded-lg border border-emerald-300/50 bg-emerald-50/50 dark:border-emerald-500/25 dark:bg-emerald-500/5 px-4 py-3">
-                <div className="flex items-center gap-2 mb-2 text-emerald-700 dark:text-emerald-300">
-                  <div className="h-3 w-3 bg-emerald-500 rounded"></div>
-                  <p className="text-xs uppercase tracking-widest font-semibold">Bénéfice net</p>
-                </div>
-                <p className="font-mono text-xl sm:text-2xl font-bold text-emerald-700 dark:text-emerald-300 tracking-tight">
-                  {((lot.quantite_vendue || 0) * (lot.marge || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar
+
+              {/* Gain potentiel restant */}
+              <div className="sm:col-span-2 rounded-lg border border-blue-300/50 bg-blue-50/50 dark:border-blue-500/25 dark:bg-blue-500/5 px-4 py-3">
+                <p className="text-xs text-blue-700 dark:text-blue-400 uppercase tracking-widest font-semibold mb-1">
+                  Gain potentiel si tout le reste est vendu
+                </p>
+                <p className="font-mono text-xl sm:text-2xl font-bold text-blue-700 dark:text-blue-300 tracking-tight">
+                  {(lot.quantiteActuelle * lot.marge).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar
                 </p>
                 <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  {`${lot.quantite_vendue} unités vendues · ${(lot.marge || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Ar / unité`}
+                  {fmt(lot.quantiteActuelle)} restant{lot.quantiteActuelle > 1 ? 's' : ''} × {lot.marge.toLocaleString('fr-FR')} Ar de marge
                 </p>
               </div>
             </div>

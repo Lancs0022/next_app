@@ -14,11 +14,18 @@ interface PointDeVente {
   nom: string
 }
 
+interface UniteOption {
+  id_unite: number
+  code: string
+  label: string
+}
+
 interface CatalogueFormData {
   id_collaborateur: string
   nom: string
   categorie: string
-  unite: string
+  /** id_unite sous forme string */
+  id_unite: string
   seuil_alerte: string
   id_pdv: string
   description: string
@@ -30,6 +37,7 @@ interface AddCatalogueDrawerProps {
   collaborateurs: Collaborateur[]
   pointsVente?: PointDeVente[]
   categories?: string[]
+  unites?: UniteOption[]
   onSubmit: (form: CatalogueFormData) => void
   loading?: boolean
   draft?: CatalogueFormData | null
@@ -39,18 +47,19 @@ const emptyForm: CatalogueFormData = {
   id_collaborateur: '',
   nom: '',
   categorie: '',
-  unite: '',
+  id_unite: '',
   seuil_alerte: '',
   id_pdv: '',
   description: ''
 }
 
-const AddCatalogueDrawer = ({ 
-  open, 
-  onClose, 
+const AddCatalogueDrawer = ({
+  open,
+  onClose,
   collaborateurs,
   pointsVente = [],
   categories = [],
+  unites = [],
   onSubmit,
   loading = false,
   draft = null
@@ -66,6 +75,14 @@ const AddCatalogueDrawer = ({
   const categoryOptions = useMemo(
     () => categories.map(category => ({ value: category, label: category })),
     [categories]
+  )
+
+  const uniteOptions = useMemo(
+    () => unites.map(u => ({
+      value: String(u.id_unite),
+      label: `${u.code} — ${u.label}`,
+    })),
+    [unites]
   )
 
   useEffect(() => {
@@ -172,7 +189,9 @@ const AddCatalogueDrawer = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nom du produit</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Nom du produit <span className="text-red-500">*</span>
+              </label>
               <input
                 value={form.nom}
                 onChange={(e) => setForm(prev => ({ ...prev, nom: e.target.value }))}
@@ -196,12 +215,12 @@ const AddCatalogueDrawer = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Unité de mesure</label>
-              <input
-                value={form.unite}
-                onChange={(e) => setForm(prev => ({ ...prev, unite: e.target.value }))}
-                placeholder="pièce, kg, L, m..."
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              <TypeaheadSelect
+                label="Unité de mesure"
+                options={uniteOptions}
+                value={form.id_unite}
+                onChange={(value) => setForm(prev => ({ ...prev, id_unite: value }))}
+                placeholder="Sélectionner une unité…"
                 disabled={loading}
               />
             </div>
@@ -209,6 +228,7 @@ const AddCatalogueDrawer = ({
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Seuil d&apos;alerte</label>
               <input
                 type="number"
+                step="any"
                 value={form.seuil_alerte}
                 onChange={(e) => setForm(prev => ({ ...prev, seuil_alerte: e.target.value }))}
                 placeholder="Quantité minimale avant alerte"

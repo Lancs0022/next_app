@@ -29,6 +29,7 @@ export async function createProduit({
       description: body?.description ? String(body.description) : null,
       categorie: body?.categorie ? String(body.categorie) : null,
       unite: body?.unite ? String(body.unite) : null,
+      id_unite: body?.id_unite != null ? Number(body.id_unite) : null,
       seuil_alerte: body?.seuil_alerte != null ? Number(body.seuil_alerte) : null,
     },
   })
@@ -58,6 +59,7 @@ export async function updateProduit({
         body?.description !== undefined ? String(body.description) : existing.description,
       categorie: body?.categorie !== undefined ? String(body.categorie) : existing.categorie,
       unite: body?.unite !== undefined ? String(body.unite) : existing.unite,
+      id_unite: body?.id_unite !== undefined ? (body.id_unite != null ? Number(body.id_unite) : null) : existing.id_unite,
       seuil_alerte: body?.seuil_alerte != null ? Number(body.seuil_alerte) : existing.seuil_alerte,
       id_collaborateur: body?.id_collaborateur != null ? Number(body.id_collaborateur) : existing.id_collaborateur,
     },

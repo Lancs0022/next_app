@@ -189,6 +189,7 @@ export async function listLotsDisponibles(params: {
         description: true,
         categorie: true,
         id_collaborateur: true,
+        id_unite: true,
         created_at: true,
         created_by: true,
       },
@@ -223,6 +224,16 @@ export async function listLotsDisponibles(params: {
         select: { id_collaborateur: true, nom: true },
       })
     : []
+
+  // Resolve unités de mesure (batch — une requête pour tous les lots)
+  const uniteIds = [...new Set(produits.map(p => p.id_unite).filter((id): id is number => id != null))]
+  const unites = uniteIds.length > 0
+    ? await prisma.uniteDeMesure.findMany({
+        where: { id_unite: { in: uniteIds } },
+        select: { id_unite: true, code: true, label: true, est_decimal: true, precision: true },
+      })
+    : []
+  const uniteMap = Object.fromEntries(unites.map(u => [u.id_unite, u]))
 
   const userIds = [
     ...new Set([
@@ -287,6 +298,7 @@ export async function listLotsDisponibles(params: {
     const quantite_vendue = quantiteVendueMap[item.id_lot] ?? 0
     const prixInitial = Number(item.prix_initial)
     const marge = Number(item.marge)
+    const unite = prod?.id_unite ? uniteMap[prod.id_unite] : undefined
 
     return {
       id_lot: item.id_lot,
@@ -300,6 +312,11 @@ export async function listLotsDisponibles(params: {
       produit_createur_nom: prod?.created_by ? userMap[prod.created_by] || null : null,
       id_collaborateur: prod?.id_collaborateur || null,
       collaborateur_nom: collab?.nom || 'Collaborateur -',
+      id_unite: prod?.id_unite || null,
+      unite_code: unite?.code || null,
+      unite_label: unite?.label || null,
+      est_decimal: unite?.est_decimal ?? false,
+      precision: unite?.precision ?? 0,
       quantite_disponible,
       quantite_vendue, // NEW: quantity sold (calculated from stock_mouvement)
       quantite_initiale: Number(item.quantite_initiale),
@@ -628,22 +645,40 @@ export async function listCatalogueStock(tenantId: number, id_collaborateur?: st
     }
   }
 
+  // Resolve unités de mesure
+  const uniteIds = [...new Set(produits.map(p => p.id_unite).filter((id): id is number => id != null))]
+  const unites = uniteIds.length > 0
+    ? await prisma.uniteDeMesure.findMany({
+        where: { id_unite: { in: uniteIds } },
+        select: { id_unite: true, code: true, label: true, est_decimal: true, precision: true },
+      })
+    : []
+  const uniteMap = Object.fromEntries(unites.map(u => [u.id_unite, u]))
+
   // Map to output shape expected by frontend
-  const data = produits.map(p => ({
-    id_produit: p.id_produit,
-    // Frontend maps libelle → nom, keep both for compatibility
-    libelle: p.nom,
-    nom: p.nom,
-    categorie: p.categorie || 'Sans catégorie',
-    quantite_en_stock: stockByProd[p.id_produit] || 0,
-    seuil_alerte: p.seuil_alerte,
-    statut: p.statut,
-    id_collaborateur: p.id_collaborateur,
-    collaborateur_nom: collabMap[p.id_collaborateur] || 'Collaborateur -',
-    unite: p.unite,
-    prix_vente_actuel: null,
-    prix_achat_actuel: null,
-  }))
+  const data = produits.map(p => {
+    const unite = p.id_unite ? uniteMap[p.id_unite] : undefined
+    return {
+      id_produit: p.id_produit,
+      libelle: p.nom,
+      nom: p.nom,
+      categorie: p.categorie || 'Sans catégorie',
+      quantite_en_stock: stockByProd[p.id_produit] || 0,
+      seuil_alerte: p.seuil_alerte ? Number(p.seuil_alerte) : null,
+      statut: p.statut,
+      id_collaborateur: p.id_collaborateur,
+      collaborateur_nom: collabMap[p.id_collaborateur] || 'Collaborateur -',
+      // Unité — les deux formes pour compatibilité frontend
+      unite: unite?.label || p.unite || null,
+      id_unite: p.id_unite || null,
+      unite_code: unite?.code || p.unite || null,
+      unite_label: unite?.label || p.unite || null,
+      est_decimal: unite?.est_decimal ?? false,
+      precision: unite?.precision ?? 0,
+      prix_vente_actuel: null,
+      prix_achat_actuel: null,
+    }
+  })
 
   return { data }
 }
