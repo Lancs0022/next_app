@@ -9,8 +9,11 @@ export const COLOR_THEMES: { id: ColorTheme; label: string; colors: string[] }[]
   { id: 'ocean', label: 'Océan', colors: ['#003049', '#d62828', '#f77f00', '#fcbf49', '#eae2b7'] },
 ]
 
+// isDark est null pendant le rendu SSR et le premier render client (avant
+// que useEffect ait lu le DOM). Les composants qui en dépendent doivent
+// traiter null comme "non encore résolu" et rendre un placeholder neutre.
 interface ThemeContextType {
-  isDark: boolean
+  isDark: boolean | null
   toggleTheme: () => void
   colorTheme: ColorTheme
   setColorTheme: (theme: ColorTheme) => void
@@ -20,57 +23,50 @@ const ThemeContext = createContext<ThemeContextType | null>(null)
 
 export const useTheme = () => {
   const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme doit être utilisé dans un ThemeProvider')
-  }
+  if (!context) throw new Error('useTheme doit être utilisé dans un ThemeProvider')
   return context
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isDark, setIsDark] = useState(false)
+  // null = pas encore résolu (SSR + premier render client)
+  // Le script inline dans layout.tsx a déjà posé la classe sur <html> —
+  // les styles Tailwind dark: sont corrects dès le premier paint.
+  // isDark sert uniquement à l'UI réactive (icônes, boutons).
+  const [isDark, setIsDark] = useState<boolean | null>(null)
   const [colorTheme, setColorThemeState] = useState<ColorTheme>('soleil')
 
-  // Initialize from localStorage
+  // Lecture du DOM après montage — source de vérité = classe posée par le script inline
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedDark = localStorage.getItem('pejaa-theme')
-      if (savedDark) {
-        setIsDark(savedDark === 'dark')
-      } else {
-        setIsDark(window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false)
-      }
-      const savedColor = localStorage.getItem('pejaa-color-theme') as ColorTheme | null
-      if (savedColor && COLOR_THEMES.some(t => t.id === savedColor)) {
-        setColorThemeState(savedColor)
-      }
+    const dark = document.documentElement.classList.contains('dark')
+    setIsDark(dark)
+    const savedColor = localStorage.getItem('pejaa-color-theme') as ColorTheme | null
+    if (savedColor && COLOR_THEMES.some(t => t.id === savedColor)) {
+      setColorThemeState(savedColor)
     }
   }, [])
 
-  // Apply dark mode
+  // Applique le dark mode SEULEMENT si isDark est résolu (non-null)
+  // — évite de retirer la classe 'dark' posée par le script inline
+  //   pendant le tout premier render où isDark vaut encore false.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pejaa-theme', isDark ? 'dark' : 'light')
-      if (isDark) {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
+    if (isDark === null) return
+    localStorage.setItem('pejaa-theme', isDark ? 'dark' : 'light')
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
     }
   }, [isDark])
 
-  // Apply color theme
+  // Applique le color theme
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pejaa-color-theme', colorTheme)
-      document.documentElement.setAttribute('data-color-theme', colorTheme)
-    }
+    localStorage.setItem('pejaa-color-theme', colorTheme)
+    document.documentElement.setAttribute('data-color-theme', colorTheme)
   }, [colorTheme])
 
-  const toggleTheme = () => setIsDark(!isDark)
+  const toggleTheme = () => setIsDark(prev => !prev)
 
-  const setColorTheme = (theme: ColorTheme) => {
-    setColorThemeState(theme)
-  }
+  const setColorTheme = (theme: ColorTheme) => setColorThemeState(theme)
 
   return (
     <ThemeContext.Provider value={{ isDark, toggleTheme, colorTheme, setColorTheme }}>

@@ -17,6 +17,8 @@ import QuickAddProduitModal from '@/components/Stock/QuickAddProduitModal'
 import { LotExplorer } from '@/components/Stock/LotExplorer'
 import type { ActionMenuId } from '@/components/Stock/ActionMenu'
 import type { Collaborateur, LotActif, PointDeVente, ProduitCatalogue } from '@/components/Stock/types'
+import VenteAnnulationModal from '@/components/Ventes/VenteAnnulationModal'
+import type { LigneVente } from '@/components/Ventes/VenteAnnulationModal'
 import api from '@/services/api'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { fetchLivraisons, setLivraisonsParams } from '@/redux/livraisonsSlice'
@@ -51,6 +53,7 @@ export default function StockPage() {
     id_collaborateur: [] as string[],
     qte_op: '',
     qte_value: '',
+    showEpuise: false,
     date: null as AnyRecord | null
   })
 
@@ -77,6 +80,9 @@ export default function StockPage() {
 
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddInitialCollab, setQuickAddInitialCollab] = useState('')
+  // Modal annulation vente depuis lot
+  const [annulationLignes, setAnnulationLignes] = useState<AnyRecord[]>([])
+  const [annulationOpen, setAnnulationOpen] = useState(false)
   const [quickAddLoading, setQuickAddLoading] = useState(false)
 
   const [detailOpen, setDetailOpen] = useState(false)
@@ -214,6 +220,10 @@ export default function StockPage() {
       pdvVille: row.point_vente_ville ?? null,
       chiffreAffaires: Number(row.chiffre_affaires ?? row.chiffreAffaires ?? 0),
       benefice: Number(row.benefice ?? 0),
+      unite_code: row.unite_code ?? null,
+      unite_label: row.unite_label ?? null,
+      est_decimal: row.est_decimal ?? false,
+      precision: row.precision ?? 0,
       // Aliases snake_case pour LotDetailModal (héritage)
       livraison_id: String(row.id_livraison),
       livraison_item_id: String(row.id_lot),
@@ -236,8 +246,9 @@ export default function StockPage() {
     setCatalogueExplorerLots([])
     setCatalogueExplorerLoading(true)
     try {
+      // Charger TOUS les lots (dispo + épuisés) — LotExplorer gère le filtrage
       const { data: res } = await api.get('/stock/lots', {
-        params: { id_produit: produit.id_produit, limit: 200 },
+        params: { id_produit: produit.id_produit, limit: 500, statut: 'tous' },
       })
       const rows = res?.data || []
       setCatalogueExplorerLots(rows.map((lot: AnyRecord) => toLotActif(lot, produit)))
@@ -487,6 +498,7 @@ export default function StockPage() {
         ...(lotsFilters.id_point_vente.length && { id_point_vente: lotsFilters.id_point_vente.join(',') }),
         ...(lotsFilters.id_collaborateur.length && { id_collaborateur: lotsFilters.id_collaborateur.join(',') }),
         ...(lotsFilters.qte_op && lotsFilters.qte_value && { qte_op: lotsFilters.qte_op, qte_value: lotsFilters.qte_value }),
+        ...(lotsFilters.showEpuise && { statut: 'tous' }),
         ...(lotsFilters.date?.dateMin && { dateMin: lotsFilters.date.dateMin }),
         ...(lotsFilters.date?.dateMax && { dateMax: lotsFilters.date.dateMax }),
         ...(lotsFilters.date?.target && { date_target: lotsFilters.date.target })
@@ -505,6 +517,22 @@ export default function StockPage() {
   }, [lotsFilters, lotsPage, lotsLimit, showToast])
 
   const handleCatalogueLotAction = useCallback(async (actionId: ActionMenuId, lot: LotActif) => {
+    if (actionId === 'annuler') {
+      try {
+        const { data: res } = await api.get(`/ventes/lot/${lot.id}`)
+        const lignes = res.data || []
+        if (lignes.length === 0) {
+          showToast('Aucune vente enregistrée pour ce lot', 'info')
+        } else {
+          setAnnulationLignes(lignes)
+          setAnnulationOpen(true)
+        }
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { error?: string } }; message?: string }
+        showToast(err?.response?.data?.error || err?.message || 'Erreur chargement des ventes', 'info')
+      }
+      return
+    }
     if (actionId === 'vendre') {
       window.location.href = `/ventes/nouvelle?from_lot=${encodeURIComponent(lot.id)}&from_pv=${encodeURIComponent(lot.pdvId)}`
       return
@@ -587,6 +615,12 @@ export default function StockPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Relancer fetchLots à chaque changement de filtre (pagination incluse)
+  useEffect(() => {
+    fetchLots()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lotsFilters, lotsPage, lotsLimit])
+
   useEffect(() => {
     refreshStockTables()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -657,7 +691,8 @@ export default function StockPage() {
       getActions: (row: AnyRecord) => {
         const actions = [
           { label: 'Voir détails', onClick: () => openDetail('lot', row) },
-          { label: 'Historique mouvements', onClick: () => openMouvements(row) }
+          { label: 'Historique mouvements', onClick: () => openMouvements(row) },
+          { label: 'Annuler des ventes…', onClick: () => handleCatalogueLotAction('annuler', toLotActif(row, toProduitCatalogue(row))) }
         ]
         if (row.quantite_disponible > 0) {
           actions.push({ label: 'Ajuster stock', onClick: () => openAjustement(row) })
@@ -710,6 +745,16 @@ export default function StockPage() {
                         onChange={(e) => setLotsFilters(prev => ({ ...prev, q: e.target.value }))}
                         className="w-full h-[42px] px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500" />
                     </div>
+                    {/* Switch lots épuisés — visible en permanence */}
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none h-[42px] px-3">
+                      <div
+                        onClick={() => setLotsFilters(prev => ({ ...prev, showEpuise: !prev.showEpuise }))}
+                        className={`relative w-9 h-5 rounded-full transition-colors ${lotsFilters.showEpuise ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${lotsFilters.showEpuise ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </div>
+                      <span className="text-xs text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">Voir épuisés</span>
+                    </label>
                     <button
                       type="button"
                       onClick={() => setShowLotsAdvancedFilters(prev => !prev)}
@@ -755,7 +800,7 @@ export default function StockPage() {
                         <DateRangeFilter value={lotsFilters.date} onChange={(val) => setLotsFilters(prev => ({ ...prev, date: val }))} />
                       </div>
                       <div className="flex items-end">
-                        <button type="button" onClick={() => setLotsFilters({ q: '', id_point_vente: [], id_collaborateur: [], qte_op: '', qte_value: '', date: null })}
+                        <button type="button" onClick={() => setLotsFilters({ q: '', id_point_vente: [], id_collaborateur: [], qte_op: '', qte_value: '', showEpuise: false, date: null })}
                           className="w-full h-[42px] px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors">
                           Réinitialiser
                         </button>
@@ -922,6 +967,21 @@ export default function StockPage() {
 
       <StockAdjustModal open={ajustOpen && !!ajustLot} onClose={() => { if (!ajustLoading) { setAjustOpen(false); setAjustLot(null) } }}
         lot={ajustLot as never} onSubmit={handleSubmitAjustement as (form: Parameters<typeof handleSubmitAjustement>[0]) => void} loading={ajustLoading} />
+
+      {annulationOpen && (
+        <VenteAnnulationModal
+          open={annulationOpen}
+          onClose={() => { setAnnulationOpen(false); setAnnulationLignes([]) }}
+          lignes={annulationLignes as LigneVente[]}
+          defaultCheckAll={false}
+          onSuccess={() => {
+            showToast('Annulation enregistrée', 'success')
+            fetchLots({ page: 1 })
+            refreshStockTables()
+            if (catalogueExplorerProduit) openCatalogueExplorer(catalogueExplorerProduit)
+          }}
+        />
+      )}
 
       <Drawer open={Boolean(catalogueExplorerProduit)} onClose={() => {
         setCatalogueExplorerProduit(null)

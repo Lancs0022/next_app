@@ -121,6 +121,11 @@ export interface LotActif {
   pdvVille?: string | null;
   livraisonCreatedAt?: string;
   livraisonCommentaire?: string | null;
+  // Unité de mesure
+  unite_code?: string | null;
+  unite_label?: string | null;
+  est_decimal?: boolean;
+  precision?: number;
   // Snake_case aliases for legacy components
     livraison_id?: string;
     livraison_item_id?: string;
@@ -140,7 +145,7 @@ export interface LotActif {
 export function mapToLotActif(
   item: LivraisonItem & {
     quantite_disponible?: number;
-    quantite_vendue?: number; // NEW: quantity sold from stock_mouvement
+    quantite_vendue?: number;
     point_vente_nom?: string;
     point_vente_ville?: string | null;
     collaborateur_nom?: string;
@@ -155,6 +160,10 @@ export function mapToLotActif(
     benefice?: number;
     livraison_created_at?: string;
     livraison_commentaire?: string | null;
+    unite_code?: string | null;
+    unite_label?: string | null;
+    est_decimal?: boolean;
+    precision?: number;
   },
   produit: ProduitCatalogue
 ): LotActif {
@@ -187,6 +196,10 @@ export function mapToLotActif(
         benefice: Number(item.benefice ?? 0),
         livraisonCreatedAt: item.livraison_created_at,
         livraisonCommentaire: item.livraison_commentaire ?? null,
+        unite_code: item.unite_code ?? null,
+        unite_label: item.unite_label ?? null,
+        est_decimal: item.est_decimal ?? false,
+        precision: item.precision ?? 0,
         // Snake_case aliases for legacy components
         livraison_id: item.id_livraison.toString(),
         livraison_item_id: item.id_lot.toString(),

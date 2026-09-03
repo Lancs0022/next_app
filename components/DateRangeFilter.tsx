@@ -374,8 +374,9 @@ const DateRangeFilter = ({
                 onChange={(e) => setDraft(prev => ({ ...prev, target: e.target.value }))}
                 className="w-full h-[42px] px-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
               >
-                <option value="date_livraison">Date d'arrivée</option>
-                <option value="date_creation">Créée le</option>
+                <option value="date_livraison">Date d&apos;arrivée (livré le)</option>
+                <option value="date_creation">Inséré dans le système le</option>
+                <option value="date_vente">Vendu le</option>
               </select>
             </div>
           )}

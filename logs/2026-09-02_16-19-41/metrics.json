@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-09-02 16:19:42.878",
+  "calls": [
+    {
+      "key": "vente.findMany",
+      "calls": 2,
+      "successes": 2,
+      "errors": 0,
+      "avgMs": 55
+    },
+    {
+      "key": "venteArticle.findMany",
+      "calls": 1,
+      "successes": 1,
+      "errors": 0,
+      "avgMs": 20
+    },
+    {
+      "key": "produit.create",
+      "calls": 1,
+      "successes": 0,
+      "errors": 1,
+      "avgMs": 16
+    },
+    {
+      "key": "GET /api/unites-mesure",
+      "calls": 5,
+      "successes": 5,
+      "errors": 0,
+      "avgMs": 12
+    },
+    {
+      "key": "req_test01",
+      "calls": 1,
+      "successes": 1,
+      "errors": 0,
+      "avgMs": 250
+    }
+  ]
+}

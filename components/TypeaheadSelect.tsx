@@ -133,13 +133,13 @@ const TypeaheadSelect = ({
   return (
     <div className="w-full" ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
           {label}
         </label>
       )}
       <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
-          <div className="flex items-center h-[42px] px-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+          <div className="flex items-center h-[42px] px-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors">
             {selectedOption && !open && !allowCustomInput ? (
               <div className="flex items-center justify-between w-full min-w-0">
                 <span className="text-sm truncate">{selectedOption.label}</span>

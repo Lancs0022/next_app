@@ -77,7 +77,7 @@ export default function QuickAddClientModal({
             <input
               value={form.nom}
               onChange={e => setForm(prev => ({ ...prev, nom: e.target.value }))}
-              className={formInputClass.replace('bg-slate-900', 'bg-white dark:bg-slate-700').replace('text-slate-200', 'text-slate-900 dark:text-white')}
+              className={formInputClass}
               required
               disabled={loading}
             />
@@ -87,7 +87,7 @@ export default function QuickAddClientModal({
             <input
               value={form.prenom}
               onChange={e => setForm(prev => ({ ...prev, prenom: e.target.value }))}
-              className={formInputClass.replace('bg-slate-900', 'bg-white dark:bg-slate-700').replace('text-slate-200', 'text-slate-900 dark:text-white')}
+              className={formInputClass}
               disabled={loading}
             />
           </div>

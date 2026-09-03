@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-09-02 16:18:04.598",
+  "calls": [
+    {
+      "key": "vente.findMany",
+      "calls": 2,
+      "successes": 2,
+      "errors": 0,
+      "avgMs": 59
+    },
+    {
+      "key": "venteArticle.findMany",
+      "calls": 1,
+      "successes": 1,
+      "errors": 0,
+      "avgMs": 15
+    },
+    {
+      "key": "produit.create",
+      "calls": 1,
+      "successes": 0,
+      "errors": 1,
+      "avgMs": 17
+    },
+    {
+      "key": "GET /api/unites-mesure",
+      "calls": 5,
+      "successes": 5,
+      "errors": 0,
+      "avgMs": 12
+    }
+  ]
+}{
+  "generatedAt": "2026-09-02 16:18:05.497",
+  "calls": [
+    {
+      "key": "vente.findMany",
+      "calls": 2,
+      "successes": 2,
+      "errors": 0,
+      "avgMs": 59
+    },
+    {
+      "key": "venteArticle.findMany",
+      "calls": 1,
+      "successes": 1,
+      "errors": 0,
+      "avgMs": 15
+    },
+    {
+      "key": "produit.create",
+      "calls": 1,
+      "successes": 0,
+      "errors": 1,
+      "avgMs": 17
+    },
+    {
+      "key": "GET /api/unites-mesure",
+      "calls": 5,
+      "successes": 5,
+      "errors": 0,
+      "avgMs": 12
+    },
+    {
+      "key": "req_test01",
+      "calls": 1,
+      "successes": 1,
+      "errors": 0,
+      "avgMs": 250
+    }
+  ]
+}

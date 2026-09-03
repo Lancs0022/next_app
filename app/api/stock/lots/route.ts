@@ -16,6 +16,7 @@ export const GET = withAuth(
       dateMin: searchParams.get('dateMin') ?? undefined,
       dateMax: searchParams.get('dateMax') ?? undefined,
       date_target: searchParams.get('date_target') ?? undefined,
+      statut: searchParams.get('statut') ?? undefined,
       page: Number(searchParams.get('page') ?? 1),
       limit: Number(searchParams.get('limit') ?? 50),
     })

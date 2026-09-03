@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation'
 import api from '@/services/api'
 import { getPvId } from '@/lib/pointVente'
 import type { FilterState } from '@/components/ResponsiveDataTable/ColumnFilterDropdown'
+import VenteAnnulationModal from '@/components/Ventes/VenteAnnulationModal'
+import type { LigneVente } from '@/components/Ventes/VenteAnnulationModal'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>
@@ -41,6 +43,12 @@ function VentesPageContent() {
   const [selectedRow, setSelectedRow] = useState<AnyRecord | null>(null)
 
   const [columnFilters, setColumnFilters] = useState<Record<string, FilterState>>({})
+  // Modal annulation
+  const [annulationOpen, setAnnulationOpen] = useState(false)
+  const [annulationLignes, setAnnulationLignes] = useState<LigneVente[]>([])
+  const [annulationDefaultAll, setAnnulationDefaultAll] = useState(false)
+  const [annulationLocked, setAnnulationLocked] = useState(false)
+  const [annulationVenteId, setAnnulationVenteId] = useState<number | undefined>()
 
   const [filters, setFilters] = useState({
     q: '',
@@ -202,15 +210,53 @@ function VentesPageContent() {
 
   const handleCloseDetail = () => { setDetailOpen(false); setSelectedRow(null); setDetailData(null) }
 
-  const cancelVente = async (venteId: number, raison: string) => {
+  // ── Modal d'annulation ──────────────────────────────────────────────────────
+  const openAnnulationVente = async (
+    venteId: number,
+    opts: { defaultAll: boolean; lock: boolean }
+  ) => {
     try {
-      await api.post(`/api/ventes/${venteId}/annuler`, { raison });
-      showToast('Vente annulée avec succès', 'success');
-      fetchVentes({ page: 1 });
-    } catch (err: any) {
-      showToast(err?.response?.data?.error || err?.message || 'Erreur lors de l\'annulation de la vente', 'error');
+      const { data: res } = await api.get(`/ventes/${venteId}`)
+      const detail = res.data || res
+      // Construire les lignes depuis le détail agrégé
+      // On appelle l'endpoint lot pour avoir quantite_retournee à jour par ligne
+      // Pour une vente agrégée, on collecte les lignes depuis detail.lignes
+      const lignesRaw: LigneVente[] = (detail.lignes ?? []).map((l: AnyRecord) => {
+        const qVendue = Number(l.quantite_vendue)
+        const qRetournee = Number(l.quantite_retournee ?? 0)
+        const qAnnulable = qVendue - qRetournee
+        return {
+          id_ligne:           l.id,
+          id_vente:           venteId,
+          date_vente:         detail.date_vente,
+          statut_vente:       detail.statut,
+          point_vente_nom:    detail.point_vente_nom ?? '',
+          libelle_produit:    l.libelle_produit ?? `Lot #${l.id_lot}`,
+          collaborateur_nom:  l.collaborateur_nom ?? '-',
+          quantite_vendue:    qVendue,
+          quantite_retournee: qRetournee,
+          quantite_annulable: qAnnulable,
+          prix_initial:       Number(l.prix_initial ?? (l.montant_ht / Math.max(1, qVendue))),
+          marge:              0,
+          montant_ht:         Number(l.montant_ht ?? 0),
+          raison_suppression: l.raison_suppression ?? null,
+        }
+      }).filter((l: LigneVente) => l.quantite_annulable > 0) // lignes déjà totalement annulées exclues
+
+      if (lignesRaw.length === 0) {
+        showToast('Toutes les lignes de cette vente ont déjà été annulées', 'info')
+        return
+      }
+      setAnnulationVenteId(venteId)
+      setAnnulationLignes(lignesRaw)
+      setAnnulationDefaultAll(opts.defaultAll)
+      setAnnulationLocked(opts.lock)
+      setAnnulationOpen(true)
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string }
+      showToast(err?.response?.data?.error || err?.message || 'Erreur chargement de la vente', 'info')
     }
-  };
+  }
 
   const STATUT_LETTER: Record<string, string> = { en_attente_paiement: 'A', payee: 'P', annulee: 'X', retournee: 'R' }
 
@@ -267,12 +313,33 @@ function VentesPageContent() {
       getActions: (row: AnyRecord) => [
         { label: 'Voir détails', onClick: () => handleRowClick(row) },
         {
-          label: 'Annuler la vente',
+          label: 'Annuler cette ligne',
           onClick: () => {
-            const reason = window.prompt("Raison de l'annulation :");
-            if (reason !== null && reason.trim() !== '') {
-              cancelVente(row.id_vente, reason.trim());
+            // Vue atomique : 1 seule ligne, case verrouillée, spec p.125
+            const ligneUnique: LigneVente = {
+              id_ligne:           row.id_vente_article,
+              id_vente:           row.id_vente,
+              date_vente:         row.date_vente,
+              statut_vente:       row.statut,
+              point_vente_nom:    row.point_vente_nom ?? `PV #${row.id_point_vente}`,
+              libelle_produit:    row.libelle_produit ?? `Lot #${row.id_lot}`,
+              collaborateur_nom:  row.collaborateur_nom ?? '-',
+              quantite_vendue:    Number(row.quantite_vendue),
+              quantite_retournee: Number(row.quantite_retournee ?? 0),
+              quantite_annulable: Number(row.quantite_vendue) - Number(row.quantite_retournee ?? 0),
+              prix_initial:       Number(row.prix_initial ?? (row.montant_ht / Math.max(1, row.quantite_vendue))),
+              marge:              0,
+              montant_ht:         Number(row.montant_ht ?? 0),
             }
+            if (ligneUnique.quantite_annulable <= 0) {
+              showToast('Cette ligne a déjà été entièrement annulée', 'info')
+              return
+            }
+            setAnnulationVenteId(row.id_vente)
+            setAnnulationLignes([ligneUnique])
+            setAnnulationDefaultAll(true)
+            setAnnulationLocked(true)
+            setAnnulationOpen(true)
           }
         }
       ]
@@ -332,12 +399,7 @@ function VentesPageContent() {
         { label: 'Voir détails', onClick: () => handleRowClick(row) },
         {
           label: 'Annuler la vente',
-          onClick: () => {
-            const reason = window.prompt("Raison de l'annulation :");
-            if (reason !== null && reason.trim() !== '') {
-              cancelVente(row.id_vente, reason.trim());
-            }
-          }
+          onClick: () => openAnnulationVente(row.id_vente, { defaultAll: true, lock: false })
         }
       ]
     }
@@ -607,6 +669,21 @@ function VentesPageContent() {
             </>
           )}
         </Drawer>
+      )}
+
+      {annulationOpen && (
+        <VenteAnnulationModal
+          open={annulationOpen}
+          onClose={() => { setAnnulationOpen(false); setAnnulationLignes([]) }}
+          lignes={annulationLignes}
+          idVente={annulationVenteId}
+          defaultCheckAll={annulationDefaultAll}
+          lockSelection={annulationLocked}
+          onSuccess={() => {
+            showToast('Annulation enregistrée', 'success')
+            fetchVentes({ page: 1 })
+          }}
+        />
       )}
 
     </div>

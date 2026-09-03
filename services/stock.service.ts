@@ -57,23 +57,26 @@ export async function listLotsDisponibles(params: {
   dateMin?: string
   dateMax?: string
   date_target?: string
+  /** 'tous' pour inclure les lots épuisés, omis = seulement en_stock */
+  statut?: string
   page?: number
   limit?: number
 }) {
   const {
     tenantId, id_produit, id_point_vente, id_collaborateur, q,
-    qte_op, qte_value, dateMin, dateMax, date_target,
+    qte_op, qte_value, dateMin, dateMax, date_target, statut,
     page = 1, limit = 50,
   } = params
 
   const pageNum = Math.max(1, page)
-  const limitNum = Math.min(200, Math.max(1, limit))
+  const limitNum = Math.min(500, Math.max(1, limit))
   const skip = (pageNum - 1) * limitNum
 
   // ── Base where on livraison_item ──
   const where: Record<string, unknown> = {
     tenant_id: tenantId,
-    statut: 'en_stock',
+    // 'tous' = pas de filtre statut (dispo + épuisés)
+    ...(statut !== 'tous' ? { statut: 'en_stock' } : {}),
   }
 
   // Filter by point de vente
@@ -337,8 +340,10 @@ export async function listLotsDisponibles(params: {
     }
   })
 
-  // Post-filter: only rows with stock > 0 (and quantity operator filter)
-  data = data.filter(d => d.quantite_disponible > 0)
+  // Post-filter: only rows with stock > 0 sauf si statut='tous'
+  if (statut !== 'tous') {
+    data = data.filter(d => d.quantite_disponible > 0)
+  }
   if (qte_value && !Number.isNaN(Number(qte_value))) {
     const val = Number(qte_value)
     if (qte_op === '=') data = data.filter(d => d.quantite_disponible === val)

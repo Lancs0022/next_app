@@ -269,8 +269,11 @@ export async function getVenteDetail(id_vente: number, tenantId: number) {
       libelle_produit: idProd ? produitMap[idProd] || `Produit #${idProd}` : `Lot #${a.id_lot}`,
       collaborateur_nom: collabMap[a.id_collaborateur] || '-',
       quantite_vendue: Number(a.quantite_vendue),
+      quantite_retournee: Number(a.quantite_retournee),
+      prix_initial: Number(a.prix_initial),
       montant_ht: Number(a.montant_ht ?? Number(a.quantite_vendue) * Number(a.prix_initial)),
       montant_marge: a.montant_marge ? Number(a.montant_marge) : null,
+      raison_suppression: a.raison_suppression ?? null,
     }
   })
 
@@ -386,6 +389,21 @@ export async function createVenteDirecte({
       const line_ht = a.quantite_vendue * a.prix_initial
       const line_marge = a.marge * a.quantite_vendue
 
+      // ── GARDE-FOU STOCK ───────────────────────────────────────────────
+      // Vérification DANS la transaction pour être atomique avec l'écriture.
+      const stockActuel = await tx.stockActuel.findFirst({
+        where: { tenant_id, id_lot: a.id_lot, id_pdv: id_point_vente },
+      })
+      const before_qty = stockActuel ? Number(stockActuel.quantite) : 0
+      if (a.quantite_vendue > before_qty) {
+        throw httpError(
+          409,
+          `Stock insuffisant pour le lot #${a.id_lot} : ` +
+          `stock disponible = ${before_qty}, quantité demandée = ${a.quantite_vendue}`
+        )
+      }
+      // ─────────────────────────────────────────────────────────────────
+
       await tx.venteArticle.create({
         data: {
           tenant_id,
@@ -401,12 +419,6 @@ export async function createVenteDirecte({
         },
       })
 
-      // 3. StockMouvement (sortie) — read current stock, compute before/after
-      const stockActuel = await tx.stockActuel.findFirst({
-        where: { tenant_id, id_lot: a.id_lot, id_pdv: id_point_vente },
-      })
-
-      const before_qty = stockActuel ? Number(stockActuel.quantite) : 0
       const after_qty = before_qty - a.quantite_vendue
 
       await tx.stockMouvement.create({
@@ -458,120 +470,217 @@ export async function createVenteDirecte({
 
   return { status: 201, payload: vente }
 }
-// ─── Cancel vente (with ledger journal entries) ────────────────────
+// ─── Cancel vente — annulation partielle, ligne par ligne ─────────────────────
+//
+// Spec : .hermes/plans/annulation-vente-flow-final.md
+// Principe : rien n'est modifié sur les enregistrements historiques (montants,
+// quantite_vendue) — tout passe par de nouvelles écritures compensatoires.
+//
 export async function cancelVente({
   id_vente,
   raison_suppression,
+  lignes,
   user,
 }: {
   id_vente: number
   raison_suppression: string
+  /** Lignes à annuler. Si absent ou vide → annulation totale de toutes les lignes. */
+  lignes?: Array<{ id_ligne: number; quantite: number }>
   user: { id_utilisateur: number; tenant_id: number }
 }) {
   const { tenant_id, id_utilisateur } = user
   if (!tenant_id) throw httpError(401, 'Tenant manquant')
+  if (!raison_suppression?.trim()) throw httpError(400, 'La raison d\'annulation est requise')
 
-  const vente = await prisma.vente.findUnique({
-    where: { id_vente, tenant_id },
-    include: { articles: true },
+  const vente = await prisma.vente.findFirst({
+    where: { id_vente, tenant_id, deleted: false },
+    include: { articles: { where: { deleted: false } } },
   })
-
   if (!vente) throw httpError(404, 'Vente non trouvée')
-  if (vente.statut === 'annulee') throw httpError(400, 'Vente déjà annulée')
+  if (vente.statut === 'annulee') throw httpError(409, 'Vente déjà entièrement annulée')
 
-  // Calculate totals
-  let montant_ht = 0
-  let montant_marge = 0
-  for (const a of vente.articles) {
-    montant_ht += Number(a.prix_initial) * Number(a.quantite_vendue)
-    montant_marge += Number(a.marge) * Number(a.quantite_vendue)
+  // ── Résoudre les lignes à traiter ──────────────────────────────────────────
+  // Si aucune ligne fournie → annulation totale (toutes les lignes au max restant)
+  type LignePayload = { id_ligne: number; quantite: number }
+  let lignesPayload: LignePayload[]
+
+  if (!lignes || lignes.length === 0) {
+    lignesPayload = vente.articles
+      .map(a => ({
+        id_ligne: a.id_ligne,
+        quantite: Number(a.quantite_vendue) - Number(a.quantite_retournee),
+      }))
+      .filter(l => l.quantite > 0)
+  } else {
+    lignesPayload = lignes
   }
-  const montant_total = montant_ht // simplified: no TVA
 
-  const updatedVente = await prisma.$transaction(async (tx) => {
-    // 1. Update Vente header: set statut to annulee and reason
-    const updated = await tx.vente.update({
-      where: { id_vente, tenant_id },
-      data: {
-        statut: 'annulee',
-        raison_suppression,
-      },
-    })
+  if (lignesPayload.length === 0) {
+    throw httpError(400, 'Aucune quantité restante à annuler')
+  }
 
-    // 2. For each article: update quantite_retournee, create stock_mouvement (annulation_vente), update stock_actuel
-    for (const a of vente.articles) {
-      // Update vente_article to mark returned quantity
+  // ── Résoudre les unités pour valider les décimales ──────────────────────────
+  const lotIds = vente.articles.map(a => a.id_lot)
+  const lots = await prisma.livraisonItem.findMany({
+    where: { id_lot: { in: lotIds } },
+    select: { id_lot: true, id_produit: true },
+  })
+  const produitIds = [...new Set(lots.map(l => l.id_produit))]
+  const produits = produitIds.length > 0
+    ? await prisma.produitCatalogue.findMany({
+        where: { id_produit: { in: produitIds } },
+        select: {
+          id_produit: true,
+          id_unite: true,
+          unite_mesure: { select: { est_decimal: true, code: true } },
+        },
+      })
+    : []
+  const lotToProduit = Object.fromEntries(lots.map(l => [l.id_lot, l.id_produit]))
+  const produitToUnite = Object.fromEntries(
+    produits.map(p => [p.id_produit, p.unite_mesure ?? null])
+  )
+
+  // ── Validation de toutes les lignes avant d'écrire quoi que ce soit ─────────
+  const articleMap = Object.fromEntries(vente.articles.map(a => [a.id_ligne, a]))
+
+  for (const lp of lignesPayload) {
+    const article = articleMap[lp.id_ligne]
+    if (!article) {
+      throw httpError(400, `Ligne #${lp.id_ligne} n'appartient pas à cette vente`)
+    }
+    const restant = Number(article.quantite_vendue) - Number(article.quantite_retournee)
+    if (lp.quantite <= 0) {
+      throw httpError(400, `La quantité à annuler pour la ligne #${lp.id_ligne} doit être > 0`)
+    }
+    if (lp.quantite > restant) {
+      throw httpError(
+        409,
+        `Quantité trop élevée pour la ligne #${lp.id_ligne} : ` +
+        `annulable max = ${restant}, demandé = ${lp.quantite}`
+      )
+    }
+    // Validation de l'unité (pas de décimale sur une unité entière)
+    const idProd = lotToProduit[article.id_lot]
+    const unite = idProd ? produitToUnite[idProd] : null
+    if (unite && !unite.est_decimal && !Number.isInteger(lp.quantite)) {
+      throw httpError(
+        400,
+        `La ligne #${lp.id_ligne} utilise l'unité "${unite.code}" (entier) — ` +
+        `la quantité ${lp.quantite} doit être un nombre entier`
+      )
+    }
+  }
+
+  // ── Transaction atomique ────────────────────────────────────────────────────
+  const result = await prisma.$transaction(async (tx) => {
+    let montantCompensatoire = 0
+
+    for (const lp of lignesPayload) {
+      const article = articleMap[lp.id_ligne]
+
+      // 1. Incrémenter quantite_retournee + écrire motif sur la ligne
       await tx.venteArticle.update({
-        where: { id_ligne: a.id_ligne },
-        data: { quantite_retournee: a.quantite_vendue },
-      })
-
-      // Get current stock
-      const stockActuel = await tx.stockActuel.findFirst({
-        where: { tenant_id, id_lot: a.id_lot, id_pdv: vente.id_point_vente },
-      })
-
-      const before_qty = stockActuel ? Number(stockActuel.quantite) : 0
-      const after_qty = before_qty + Number(a.quantite_vendue) // returning stock increases quantity
-
-      // Create stock_mouvement of type annulation_vente
-      await tx.stockMouvement.create({
+        where: { id_ligne: lp.id_ligne },
         data: {
-          tenant_id,
-          id_lot: a.id_lot,
-          type: 'annulation_vente',
-          quantite: a.quantite_vendue,
-          before_qty,
-          after_qty,
-          source_type: 'ANNULATION_VENTE',
-          source_id: vente.id_vente,
-          created_by: id_utilisateur || null,
+          quantite_retournee: { increment: lp.quantite },
+          raison_suppression,
         },
       })
 
-      // Update stock_actuel
+      // 2. Nouveau stock_mouvement (annulation_vente)
+      const stockActuel = await tx.stockActuel.findFirst({
+        where: { tenant_id, id_lot: article.id_lot, id_pdv: vente.id_point_vente },
+      })
+      const before_qty = stockActuel ? Number(stockActuel.quantite) : 0
+      const after_qty = before_qty + lp.quantite
+
+      await tx.stockMouvement.create({
+        data: {
+          tenant_id,
+          id_lot: article.id_lot,
+          type: 'annulation_vente',
+          quantite: lp.quantite,
+          before_qty,
+          after_qty,
+          source_type: 'VENTE',
+          source_id: id_vente,
+          created_by: id_utilisateur,
+        },
+      })
+
+      // 3. Remonter le stock_actuel
       if (stockActuel) {
         await tx.stockActuel.update({
           where: { id: stockActuel.id },
           data: { quantite: after_qty },
         })
       } else {
-        // If no stockActuel record, create one (should not happen in normal flow)
         await tx.stockActuel.create({
           data: {
             tenant_id,
-            id_lot: a.id_lot,
+            id_lot: article.id_lot,
             id_pdv: vente.id_point_vente,
             quantite: after_qty,
             quantite_reservee: 0,
-            created_by: id_utilisateur || null,
+            created_by: id_utilisateur,
           },
         })
       }
+
+      // Montant compensatoire proratisé : quantite_saisie × prix_initial
+      montantCompensatoire += lp.quantite * Number(article.prix_initial)
     }
 
-    // 3. Create compensating TransactionFinanciere (OUT) for reimbursement
-    const venteCategory = await tx.transactionFinanciere.findFirst({
-      where: { tenant_id, source_module: 'VENTE' },
-      select: { id_categorie_financiere: true },
+    // 4. Transaction financière compensatoire (OUT) — une seule pour l'action
+    const cat = await tx.financialCategory.findFirst({
+      where: { tenant_id, name: 'Retour', type: 'OUT' },
+      select: { id_category: true },
     })
-    const id_categorie_financiere = venteCategory?.id_categorie_financiere ?? 1
+    const fallbackCat = await tx.financialCategory.findFirst({
+      where: { tenant_id },
+      select: { id_category: true },
+    })
+    const id_categorie_financiere = cat?.id_category ?? fallbackCat?.id_category ?? 1
 
     await tx.transactionFinanciere.create({
       data: {
         tenant_id,
         type: 'OUT',
-        montant: montant_total,
+        montant: montantCompensatoire,
         id_categorie_financiere,
         source_module: 'VENTE',
-        source_id: vente.id_vente,
-        description: `Annulation vente #${vente.id_vente}: ${raison_suppression}`,
+        source_id: id_vente,
+        description: `Annulation partielle vente #${id_vente} : ${raison_suppression}`,
         created_by: id_utilisateur,
       },
     })
 
-    return updated
+    // 5. Recalculer le statut de la vente par dérivation
+    const articlesActualises = await tx.venteArticle.findMany({
+      where: { id_vente, deleted: false },
+      select: { quantite_vendue: true, quantite_retournee: true },
+    })
+    const totalVendu = articlesActualises.reduce((s, a) => s + Number(a.quantite_vendue), 0)
+    const totalRetourne = articlesActualises.reduce((s, a) => s + Number(a.quantite_retournee), 0)
+    const nouveauStatut = totalRetourne >= totalVendu ? 'annulee' : 'retournee'
+
+    // 6. Mettre à jour vente.statut + raison_suppression (résumé, non-faisant-foi)
+    const updated = await tx.vente.update({
+      where: { id_vente },
+      data: {
+        statut: nouveauStatut,
+        raison_suppression,
+      },
+    })
+
+    return {
+      vente: updated,
+      montantCompensatoire,
+      nouveauStatut,
+      lignesAnnulees: lignesPayload.length,
+    }
   })
 
-  return { status: 200, payload: updatedVente }
+  return { status: 200, payload: result }
 }

@@ -68,9 +68,25 @@ function todayIso(): string {
   return `${y}-${m}-${day}`
 }
 
+/** Génère une référence de livraison de la forme LIV-DD-MM-YY-N
+ *  N est un compteur réinitialisé chaque jour, stocké dans localStorage. */
+function generateLivraisonRef(): string {
+  if (typeof window === 'undefined') return ''
+  const today = new Date()
+  const dd = String(today.getDate()).padStart(2, '0')
+  const mm = String(today.getMonth() + 1).padStart(2, '0')
+  const yy = String(today.getFullYear()).slice(-2)
+  const todayKey = `${dd}-${mm}-${yy}`
+  const storageKey = `pejaa.livraison.ref.${todayKey}`
+  const prev = parseInt(localStorage.getItem(storageKey) || '0', 10)
+  const next = prev + 1
+  localStorage.setItem(storageKey, String(next))
+  return `LIV-${dd}-${mm}-${yy}-${next}`
+}
+
 function buildDefaultMeta(): SessionMeta {
   return {
-    date: todayIso(),
+    date: '',          // vide au SSR — useEffect pose todayIso() côté client
     id_pdv: '',
     reference: '',
     comment: '',
@@ -93,6 +109,8 @@ interface UseDynamicEntrySessionOptions {
   collaborateurs: Array<{ id_collaborateur: string | number; nom: string }>
   produitsCatalogue: ProductOption[]
   lotsDisponibles?: Array<{ id_lot: number; id_produit?: number; id_collaborateur?: number; libelle_produit?: string; quantite_disponible?: number }>
+  /** ID du PdV à pré-sélectionner si aucun snapshot n'existe */
+  defaultPvId?: string
   onSyncSuccess?: () => void
   onSyncError?: (msg: string) => void
 }
@@ -102,6 +120,7 @@ export function useDynamicEntrySession({
   collaborateurs,
   produitsCatalogue,
   lotsDisponibles = [],
+  defaultPvId,
   onSyncSuccess,
   onSyncError,
 }: UseDynamicEntrySessionOptions) {
@@ -120,7 +139,7 @@ export function useDynamicEntrySession({
     onSyncError,
   })
 
-  const initFromCollaborateurs = useCallback(() => {
+  const initFromCollaborateurs = useCallback((defaultPvId?: string) => {
     const saved = loadSnapshot(module)
     if (saved) {
       setMeta({ ...buildDefaultMeta(), ...saved.meta, date: saved.meta.date || todayIso() })
@@ -128,14 +147,23 @@ export function useDynamicEntrySession({
       setActiveTabId(saved.activeTabId || saved.tabs?.[0]?.id || '')
       return
     }
-    setMeta(buildDefaultMeta())
+    // Pas de snapshot — générer une référence fraîche et pré-remplir le PdV
+    const freshMeta = buildDefaultMeta()
+    freshMeta.date = todayIso()       // côté client uniquement (dans useEffect)
+    if (module === 'livraison') {
+      freshMeta.reference = generateLivraisonRef()
+    }
+    if (defaultPvId) {
+      freshMeta.id_pdv = defaultPvId
+    }
+    setMeta(freshMeta)
     setTabs([])
     setActiveTabId('')
   }, [module])
 
   useEffect(() => {
-    initFromCollaborateurs()
-  }, [initFromCollaborateurs])
+    initFromCollaborateurs(defaultPvId)
+  }, [initFromCollaborateurs, defaultPvId])
 
   const persistSnapshot = useCallback(() => {
     const snapshot: SessionSnapshot = {

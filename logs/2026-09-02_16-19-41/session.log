@@ -1,0 +1,98 @@
+════════════════════════════════════════════════════════
+PEJAA SERVER SESSION
+Démarré     : 2026-09-02 16:19:41.666
+Environnement : development
+════════════════════════════════════════════════════════
+
+
+[req_test01] → GET /api/test
+
+════════ Préparation pour l'annulation de vente ════════
+
+→ Récupération des ventes
+→ Lecture DB ventes
+   [DB] vente.findMany
+   ✓ Succès
+   Résultat : 24 lignes
+   Durée : 32 ms
+   ⚠ Volume important — 24 lignes
+→ Récupération des articles
+→ Lecture DB articles
+   [DB] venteArticle.findMany
+   ✓ Succès
+   Résultat : 87 lignes
+   Durée : 20 ms
+   ⚠ Volume important — 87 lignes
+
+═════════════════ Test opération lente ═════════════════
+
+→ Requête lente
+   [DB] vente.findMany
+   ✓ Succès
+   Résultat : 12 482 lignes
+   Durée : 77 ms
+   ⚠ Opération lente — 77 ms
+   ⚠ Volume important — 12 482 lignes
+
+═════════════════════ Test erreur ══════════════════════
+
+→ Opération échouée
+   [DB] produit.create
+   ✗ Échec
+   Durée : 16 ms
+
+═══════════════════════ ERROR ══════════════════════════
+
+Opération échouée
+
+Opération : produit.create
+
+Durée : 16 ms
+
+Type : Error
+
+Message : PEJAA_TEST_ERROR: contrainte unique violée
+
+════════════════════════════════════════════════════════
+
+
+═══════════════════ Test répétition ════════════════════
+
+
+⚠ APPELS RÉPÉTITIFS DÉTECTÉS
+
+   GET /api/unites-mesure
+   4 appels en 1.0 seconde
+   (absence de cache, useEffect instable, composant remonté, etc.)
+
+ℹ Traitement terminé
+⚠ Volume de données à surveiller
+
+════════ API SUMMARY ═══════════════════════════════════
+
+GET /api/unites-mesure
+   Calls   : 5
+   Success : 5
+   Errors  : 0
+   Average : 12 ms
+
+vente.findMany
+   Calls   : 2
+   Success : 2
+   Errors  : 0
+   Average : 55 ms
+
+venteArticle.findMany
+   Calls   : 1
+   Success : 1
+   Errors  : 0
+   Average : 20 ms
+
+produit.create
+   Calls   : 1
+   Success : 0
+   Errors  : 1
+   Average : 16 ms
+
+[req_test01] ✓ Terminée — 250 ms
+

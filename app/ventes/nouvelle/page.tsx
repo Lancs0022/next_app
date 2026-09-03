@@ -85,10 +85,18 @@ function NouvelleVentePageContent() {
         id_collaborateur: c.id_collaborateur,
         nom: c.nom
       })))
-      setPointsVente((pvRes.data?.data || pvRes.data || []).map((pv: any) => ({
+      const pvList = (pvRes.data?.data || pvRes.data || []).map((pv: any) => ({
         id: getPvId(pv),
         nom: pv.nom
-      })))
+      }))
+      setPointsVente(pvList)
+      // Pré-remplir le PdV par défaut si aucun n'est déjà sélectionné
+      if (pvList.length > 0) {
+        session.setMeta(prev => ({
+          ...prev,
+          id_pdv: prev.id_pdv || String(pvList[0].id),
+        }))
+      }
     } catch {
       showToast('Erreur chargement des listes de métadonnées', 'info')
     }
@@ -279,21 +287,30 @@ function NouvelleVentePageContent() {
           </button>
         </div>
 
-        <div className="border-t border-slate-700 bg-slate-800 flex-1 min-h-0 overflow-y-auto">
+        <div className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-1 min-h-0 overflow-y-auto">
           {session.selectedLines.length === 0 ? (
-            <div className="py-12 text-center text-sm text-slate-400">
+            <div className="py-12 text-center text-sm text-slate-400 dark:text-slate-400">
               Aucun article sélectionné — clique sur « Ajouter marchandises »
             </div>
           ) : (
             <div className="p-3 space-y-2">
-              {session.selectedLines.map(line => (
-                <div key={line.id_lot} className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-slate-900 border border-slate-700">
+              {session.selectedLines.map(line => {
+                const qty = Number(line.quantite) || 0
+                const montant = qty * line.prix_initial
+                const isOverStock = qty > line.maxQty
+                return (
+                <div key={line.id_lot} className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                   <div className="flex-1 min-w-[140px]">
-                    <p className="text-sm text-slate-100 truncate">{line.libelle_produit}</p>
-                    <p className="text-xs text-slate-400">{line.collaborateur_nom}</p>
+                    <p className="text-sm text-slate-800 dark:text-slate-100 truncate">{line.libelle_produit}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{line.collaborateur_nom}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                      Stock dispo : <span className={isOverStock ? 'text-red-500 font-semibold' : 'text-slate-500 dark:text-slate-400'}>
+                        {line.maxQty}{line.unite_code && line.unite_code !== 'U' ? ` ${line.unite_code}` : ''}
+                      </span>
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400">
+                    <label className={`text-xs ${isOverStock ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'}`}>
                       Qté{line.unite_code && line.unite_code !== 'U' ? ` (${line.unite_code})` : ''}
                     </label>
                     <input
@@ -301,18 +318,18 @@ function NouvelleVentePageContent() {
                       inputMode={line.est_decimal ? 'decimal' : 'numeric'}
                       value={line.quantite}
                       onChange={e => session.updateLine(line.id_lot, 'quantite', e.target.value)}
-                      className="w-20 px-2 py-1.5 text-xs border border-slate-600 rounded bg-slate-800 text-slate-200 text-center"
+                      className={`w-20 px-2 py-1.5 text-xs border rounded text-center focus:outline-none focus:border-indigo-500 ${
+                        isOverStock
+                          ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                          : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200'
+                      }`}
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400">Réduc.</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={line.reduction}
-                      onChange={e => session.updateLine(line.id_lot, 'reduction', e.target.value)}
-                      className="w-20 px-2 py-1.5 text-xs border border-slate-600 rounded bg-slate-800 text-slate-200 text-center"
-                    />
+                  <div className="text-xs text-right min-w-[90px]">
+                    <p className="text-slate-500 dark:text-slate-400">Montant</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-100">
+                      {montant > 0 ? `${montant.toLocaleString('fr-FR')} Ar` : '—'}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -325,20 +342,21 @@ function NouvelleVentePageContent() {
                     </svg>
                   </button>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
 
-        <div className="bg-slate-800 border-t border-slate-700 px-4 py-3 flex flex-wrap items-center gap-4 text-xs shrink-0">
-          <span className="text-slate-300">
-            Total articles: <strong className="text-white">{session.metrics.totalArticles}</strong>
+        <div className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex flex-wrap items-center gap-4 text-xs shrink-0">
+          <span className="text-slate-600 dark:text-slate-300">
+            Total articles: <strong className="text-slate-900 dark:text-white">{session.metrics.totalArticles}</strong>
           </span>
-          <span className="text-slate-300">
-            Montant: <strong className="text-white">{formatAr(session.metrics.totalCost)} Ar</strong>
+          <span className="text-slate-600 dark:text-slate-300">
+            Montant: <strong className="text-slate-900 dark:text-white">{formatAr(session.metrics.totalCost)} Ar</strong>
           </span>
-          <span className="text-slate-300">
-            Marge estimée: <strong className="text-green-400">{formatAr(session.metrics.totalProfit)} Ar</strong>
+          <span className="text-slate-600 dark:text-slate-300">
+            Marge estimée: <strong className="text-green-600 dark:text-green-400">{formatAr(session.metrics.totalProfit)} Ar</strong>
           </span>
         </div>
       </div>

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from "react";
-import { ShoppingCart, Sliders, ArrowLeftRight, DollarSign, Settings, ChevronDown } from "lucide-react";
+import { ShoppingCart, Sliders, ArrowLeftRight, DollarSign, Settings, ChevronDown, XCircle } from "lucide-react";
 
-export type ActionMenuId = "vendre" | "ajuster" | "transfert" | "prix" | null;
+export type ActionMenuId = "vendre" | "ajuster" | "transfert" | "prix" | "annuler" | null;
 
 const ACTIONS = [
   {
@@ -33,6 +33,13 @@ const ACTIONS = [
     icon: DollarSign,
     color: "text-violet-400 hover:bg-violet-500/10",
     note: "Met à jour livraison_item sans modifier l'historique des ventes fermées.",
+  },
+  {
+    id: "annuler" as ActionMenuId,
+    label: "Annuler des ventes sur ce lot",
+    icon: XCircle,
+    color: "text-red-400 hover:bg-red-500/10",
+    note: "Annulation partielle ou totale — remise en stock + flux financier compensatoire.",
   },
 ];
 

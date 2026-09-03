@@ -66,7 +66,7 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
   useEffect(() => { onSyncSuccessRef.current = onSyncSuccess }, [onSyncSuccess])
 
   const [meta, setMeta] = useState<VenteMeta>(() => ({
-    date: new Date().toISOString().slice(0, 10),
+    date: '',          // vide au SSR — peuplé par useEffect côté client
     id_pdv: '',
     id_client: '',
     client_uuid: createClientUuid(),
@@ -197,6 +197,17 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
         // Empêcher plusieurs points
         const parts = cleaned.split('.')
         if (parts.length > 2) cleaned = parts[0] + '.' + parts.slice(1).join('')
+        // Bloquer au-dessus du stock disponible
+        const numVal = parseFloat(cleaned)
+        if (!isNaN(numVal) && numVal > line.maxQty) {
+          cleaned = String(line.maxQty)
+        }
+      } else if (field === 'quantite') {
+        cleaned = value.replace(/[^0-9]/g, '')
+        const numVal = parseInt(cleaned, 10)
+        if (!isNaN(numVal) && numVal > line.maxQty) {
+          cleaned = String(Math.floor(line.maxQty))
+        }
       } else {
         cleaned = value.replace(/[^0-9]/g, '')
       }
@@ -244,6 +255,16 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
       return
     }
 
+    // Vérification locale stock — le backend rejettera aussi, mais on
+    // informe l'utilisateur avant d'envoyer.
+    const overStock = validLines.find(l => Number(l.quantite) > l.maxQty)
+    if (overStock) {
+      onSyncErrorRef.current?.(
+        `Quantité trop élevée pour "${overStock.libelle_produit}" : max ${overStock.maxQty} ${overStock.unite_code}`
+      )
+      return
+    }
+
     const item: SyncQueueItem = {
       client_uuid: meta.client_uuid,
       module: 'vente',
@@ -275,7 +296,7 @@ export function useVenteEntrySession({ onSyncSuccess, onSyncError }: UseVenteEnt
   const resetSession = useCallback(() => {
     clearSessionStorage('vente')
     setMeta({
-      date: new Date().toISOString().slice(0, 10),
+      date: '',   // useEffect de la page reposera todayIso() au prochain cycle
       id_pdv: '',
       id_client: '',
       client_uuid: createClientUuid(),

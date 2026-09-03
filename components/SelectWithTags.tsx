@@ -97,12 +97,21 @@ const SelectWithTags = ({
   }, [open])
 
   const triggerClass = compact
-    ? 'flex-1 min-w-0 flex items-center justify-between gap-2 h-8 px-2 text-xs bg-slate-900 border border-slate-600 rounded text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50'
+    ? 'flex-1 min-w-0 flex items-center justify-between gap-2 h-8 px-2 text-xs ' +
+      'bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded ' +
+      'text-slate-800 dark:text-slate-100 ' +
+      'focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 transition-colors'
     : `${formInputClass} flex items-center justify-between gap-2 text-left disabled:opacity-50`
 
   const addBtnClass = compact
-    ? 'inline-flex items-center justify-center h-8 w-8 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition-colors shrink-0'
-    : 'inline-flex items-center justify-center h-[42px] w-[42px] rounded-lg border border-slate-600 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-indigo-400 transition-colors shrink-0'
+    ? 'inline-flex items-center justify-center h-8 w-8 rounded ' +
+      'border border-slate-200 dark:border-slate-700 ' +
+      'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 ' +
+      'text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors shrink-0'
+    : 'inline-flex items-center justify-center h-[42px] w-[42px] rounded-lg ' +
+      'border border-slate-300 dark:border-slate-600 ' +
+      'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 ' +
+      'text-slate-500 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors shrink-0'
 
   const handleSelect = (nextValue: string) => {
     onChange?.(nextValue)
@@ -111,7 +120,7 @@ const SelectWithTags = ({
 
   const dropdown = open && portalRef.current && createPortal(
     <div
-      className="rounded-lg border border-slate-600 bg-slate-800 shadow-xl max-h-56 overflow-y-auto"
+      className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl max-h-56 overflow-y-auto"
       style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: Z_MODAL_NESTED }}
     >
       {allowEmpty && (
@@ -119,8 +128,8 @@ const SelectWithTags = ({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => handleSelect('')}
-          className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-slate-700 ${
-            !value ? 'bg-indigo-600/30 text-white font-medium' : 'text-slate-300'
+          className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
+            !value ? 'bg-indigo-50 dark:bg-indigo-600/30 text-indigo-700 dark:text-white font-medium' : 'text-slate-600 dark:text-slate-300'
           }`}
         >
           {placeholder}
@@ -132,10 +141,10 @@ const SelectWithTags = ({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => handleSelect(opt.value)}
-          className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-slate-700 ${
+          className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
             opt.value === String(value ?? '')
-              ? 'bg-indigo-600/30 text-white font-medium'
-              : 'text-slate-100'
+              ? 'bg-indigo-50 dark:bg-indigo-600/30 text-indigo-700 dark:text-white font-medium'
+              : 'text-slate-800 dark:text-slate-100'
           }`}
         >
           {opt.label}
@@ -148,7 +157,7 @@ const SelectWithTags = ({
   return (
     <div className={`w-full ${className}`} ref={containerRef}>
       {label && (
-        <label className="block text-xs font-medium text-slate-400 mb-1">{label}</label>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{label}</label>
       )}
       <div className="flex items-center gap-2">
         <button

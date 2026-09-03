@@ -245,3 +245,6 @@ app/(admin)/ventes/page.tsx (294:7)"
 
 #### Abonnement
 
+
+
+Il me faudrait créer un composant de chips aussi pour les paires de quantités [dispo]/[Totalement dispo

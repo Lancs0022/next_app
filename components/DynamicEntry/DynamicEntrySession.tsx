@@ -34,7 +34,6 @@ interface DynamicEntrySessionProps {
   onSyncSuccess?: () => void
   onSyncError?: (msg: string) => void
 }
-
 export default function DynamicEntrySession({
   module,
   title,
@@ -49,10 +48,19 @@ export default function DynamicEntrySession({
   const [addCollabOpen, setAddCollabOpen] = useState(false)
   const [selectedNewCollab, setSelectedNewCollab] = useState('')
 
+  const pvOptions = pointsVente.map(pv => ({
+    value: String(pv.id_pdv ?? pv.id_point_vente),
+    label: pv.nom,
+  }))
+
+  // PdV par défaut : le premier de la liste
+  const defaultPvId = pvOptions[0]?.value
+
   const session = useDynamicEntrySession({
     module,
     collaborateurs,
     produitsCatalogue,
+    defaultPvId,
     onSyncSuccess,
     onSyncError,
   })
@@ -64,8 +72,10 @@ export default function DynamicEntrySession({
   )
 
   const formatTitleDate = () => {
-    const d = session.meta.date || new Date().toISOString().slice(0, 10)
-    return new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    if (!session.meta.date) return ''   // pas encore résolu côté client
+    return new Date(session.meta.date + 'T12:00:00').toLocaleDateString('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    })
   }
 
   const usedCollabIds = new Set(session.tabs.map(t => t.id_collaborateur))
@@ -83,11 +93,6 @@ export default function DynamicEntrySession({
       return ai - bi
     })
     .map(c => ({ value: String(c.id_collaborateur), label: c.nom }))
-
-  const pvOptions = pointsVente.map(pv => ({
-    value: String(pv.id_pdv ?? pv.id_point_vente),
-    label: pv.nom,
-  }))
 
   const handleAddCollaborator = () => {
     if (!selectedNewCollab) return
@@ -155,7 +160,7 @@ export default function DynamicEntrySession({
         <FormField label="Référence">
           <input
             type="text"
-            value={session.meta.reference || new Date().toISOString()}
+            value={session.meta.reference}
             onChange={e => session.setMeta(prev => ({ ...prev, reference: e.target.value }))}
             className={formInputClass}
           />

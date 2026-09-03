@@ -84,7 +84,7 @@ export default function AjouterMarchandisesModal({
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
               placeholder="Rechercher un produit…"
-              className={formInputClass.replace('bg-slate-900', 'bg-white dark:bg-slate-700').replace('text-slate-200', 'text-slate-900 dark:text-white')}
+              className={formInputClass}
             />
           </FormField>
           <TypeaheadSelect
@@ -96,9 +96,9 @@ export default function AjouterMarchandisesModal({
           />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-900 p-1">
+        <div className="flex-1 min-h-0 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 p-1">
           {!selectedPdv ? (
-            <div className="py-10 text-center text-sm text-slate-400">
+            <div className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
               Sélectionne un point de vente pour voir les lots disponibles
             </div>
           ) : (
