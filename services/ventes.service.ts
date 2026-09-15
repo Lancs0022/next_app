@@ -84,15 +84,22 @@ export async function listVentesAtomiques(params: VenteQueryParams) {
       : Promise.resolve([]),
   ])
 
-  // Resolve produit names from lots
+  // Resolve produit names + unités depuis lots
   const lotProduitIds = [...new Set(lots.map((l) => l.id_produit))]
   const produits = lotProduitIds.length > 0
-    ? await prisma.produitCatalogue.findMany({ where: { id_produit: { in: lotProduitIds } }, select: { id_produit: true, nom: true } })
+    ? await prisma.produitCatalogue.findMany({
+        where: { id_produit: { in: lotProduitIds } },
+        select: {
+          id_produit: true,
+          nom: true,
+          unite_mesure: { select: { code: true, est_decimal: true, precision: true } },
+        },
+      })
     : []
 
   const pdvMap = Object.fromEntries(pdvs.map((p) => [p.id_pdv, p.nom]))
   const lotMap = Object.fromEntries(lots.map((l) => [l.id_lot, l.id_produit]))
-  const produitMap = Object.fromEntries(produits.map((p) => [p.id_produit, p.nom]))
+  const produitMap = Object.fromEntries(produits.map((p) => [p.id_produit, p]))
   const collabMap = Object.fromEntries(collabs.map((c) => [c.id_collaborateur, `${c.prenom ? c.prenom + ' ' : ''}${c.nom}`]))
   const clientMap = Object.fromEntries(clients.map((c) => [c.id_client, `${c.prenom ? c.prenom + ' ' : ''}${c.nom}`]))
   const userMap = Object.fromEntries(utilisateurs.map((u) => [u.id_utilisateur, `${u.prenom ? u.prenom + ' ' : ''}${u.nom}`]))
@@ -104,7 +111,7 @@ export async function listVentesAtomiques(params: VenteQueryParams) {
     filtered = articles.filter((a) => {
       const pvNom = pdvMap[a.vente.id_point_vente] || ''
       const idProd = lotMap[a.id_lot]
-      const prodNom = idProd ? produitMap[idProd] || '' : ''
+      const prodNom = idProd ? (produitMap[idProd]?.nom || '') : ''
       const collabNom = collabMap[a.id_collaborateur] || ''
       return pvNom.toLowerCase().includes(search) ||
         prodNom.toLowerCase().includes(search) ||
@@ -114,22 +121,29 @@ export async function listVentesAtomiques(params: VenteQueryParams) {
 
   const data = filtered.map((a) => {
     const idProd = lotMap[a.id_lot]
+    const produit = idProd ? produitMap[idProd] : undefined
     return {
-      id_vente_article: a.id_ligne,
-      id_vente: a.id_vente,
-      date_vente: a.vente.date_vente,
-      id_point_vente: a.vente.id_point_vente,
-      point_vente_nom: pdvMap[a.vente.id_point_vente] || `PV #${a.vente.id_point_vente}`,
-      id_lot: a.id_lot,
-      libelle_produit: idProd ? produitMap[idProd] || `Produit #${idProd}` : `Lot #${a.id_lot}`,
-      id_collaborateur: a.id_collaborateur,
-      collaborateur_nom: collabMap[a.id_collaborateur] || '-',
-      quantite_vendue: a.quantite_vendue,
-      montant_ht: Number(a.montant_ht ?? Number(a.quantite_vendue) * Number(a.prix_initial)),
-      montant_marge: a.montant_marge ? Number(a.montant_marge) : null,
-      statut: a.vente.statut,
-      client_nom: a.vente.id_client ? clientMap[a.vente.id_client] || null : null,
-      cree_par_nom: a.vente.id_utilisateur ? userMap[a.vente.id_utilisateur] || null : null,
+      id_vente_article:   a.id_ligne,
+      id_vente:           a.id_vente,
+      date_vente:         a.vente.date_vente,
+      id_point_vente:     a.vente.id_point_vente,
+      point_vente_nom:    pdvMap[a.vente.id_point_vente] || `PV #${a.vente.id_point_vente}`,
+      id_lot:             a.id_lot,
+      libelle_produit:    produit?.nom ? produit.nom : (idProd ? `Produit #${idProd}` : `Lot #${a.id_lot}`),
+      id_collaborateur:   a.id_collaborateur,
+      collaborateur_nom:  collabMap[a.id_collaborateur] || '-',
+      quantite_vendue:    a.quantite_vendue,
+      quantite_retournee: Number(a.quantite_retournee),
+      prix_initial:       Number(a.prix_initial),
+      montant_ht:         Number(a.montant_ht ?? Number(a.quantite_vendue) * Number(a.prix_initial)),
+      montant_marge:      a.montant_marge ? Number(a.montant_marge) : null,
+      statut:             a.vente.statut,
+      client_nom:         a.vente.id_client ? clientMap[a.vente.id_client] || null : null,
+      cree_par_nom:       a.vente.id_utilisateur ? userMap[a.vente.id_utilisateur] || null : null,
+      unite_code:         produit?.unite_mesure?.code ?? null,
+      est_decimal:        produit?.unite_mesure?.est_decimal ?? false,
+      precision:          produit?.unite_mesure?.precision ?? 0,
+      raison_suppression: a.raison_suppression ?? null,
     }
   })
 
@@ -251,22 +265,30 @@ export async function getVenteDetail(id_vente: number, tenantId: number) {
     }),
   ])
 
-  // Resolve produit names
+  // Resolve produit names + unités
   const produitIds = [...new Set(lots.map((l) => l.id_produit))]
   const produits = produitIds.length > 0
-    ? await prisma.produitCatalogue.findMany({ where: { id_produit: { in: produitIds } }, select: { id_produit: true, nom: true } })
+    ? await prisma.produitCatalogue.findMany({
+        where: { id_produit: { in: produitIds } },
+        select: {
+          id_produit: true,
+          nom: true,
+          unite_mesure: { select: { code: true, est_decimal: true, precision: true } },
+        },
+      })
     : []
 
   const lotMap = Object.fromEntries(lots.map((l) => [l.id_lot, l.id_produit]))
-  const produitMap = Object.fromEntries(produits.map((p) => [p.id_produit, p.nom]))
+  const produitMap = Object.fromEntries(produits.map((p) => [p.id_produit, p]))
   const collabMap = Object.fromEntries(collabs.map((c) => [c.id_collaborateur, `${c.prenom ? c.prenom + ' ' : ''}${c.nom}`]))
 
   const lignes = vente.articles.map((a) => {
     const idProd = lotMap[a.id_lot]
+    const produit = idProd ? produitMap[idProd] : undefined
     return {
       id: a.id_ligne,
       id_lot: a.id_lot,
-      libelle_produit: idProd ? produitMap[idProd] || `Produit #${idProd}` : `Lot #${a.id_lot}`,
+      libelle_produit: produit?.nom ? produit.nom : (idProd ? `Produit #${idProd}` : `Lot #${a.id_lot}`),
       collaborateur_nom: collabMap[a.id_collaborateur] || '-',
       quantite_vendue: Number(a.quantite_vendue),
       quantite_retournee: Number(a.quantite_retournee),
@@ -274,6 +296,9 @@ export async function getVenteDetail(id_vente: number, tenantId: number) {
       montant_ht: Number(a.montant_ht ?? Number(a.quantite_vendue) * Number(a.prix_initial)),
       montant_marge: a.montant_marge ? Number(a.montant_marge) : null,
       raison_suppression: a.raison_suppression ?? null,
+      unite_code:  produit?.unite_mesure?.code ?? null,
+      est_decimal: produit?.unite_mesure?.est_decimal ?? false,
+      precision:   produit?.unite_mesure?.precision ?? 0,
     }
   })
 
@@ -342,6 +367,29 @@ export async function createVenteDirecte({
     marge: number
   }> = []
 
+  // Pré-charger les unités de mesure : LivraisonItem → id_produit → ProduitCatalogue → UniteDeMesure
+  const lotIds = lignes.map(l => Number(l.id_lot)).filter(Boolean)
+  const lotsItems = await prisma.livraisonItem.findMany({
+    where: { id_lot: { in: lotIds } },
+    select: { id_lot: true, id_produit: true },
+  })
+  const produitIds = [...new Set(lotsItems.map(l => l.id_produit))]
+  const produits = produitIds.length > 0
+    ? await prisma.produitCatalogue.findMany({
+        where: { id_produit: { in: produitIds } },
+        select: {
+          id_produit: true,
+          nom: true,
+          unite_mesure: { select: { code: true, est_decimal: true } },
+        },
+      })
+    : []
+  const produitMap = Object.fromEntries(produits.map(p => [p.id_produit, p]))
+  // Map finale lot → { nom, unite_mesure }
+  const uniteByLot = new Map(
+    lotsItems.map(l => [l.id_lot, produitMap[l.id_produit] ?? null])
+  )
+
   for (const l of lignes) {
     const id_lot = Number(l.id_lot)
     const id_collaborateur = Number(l.id_collaborateur)
@@ -355,6 +403,21 @@ export async function createVenteDirecte({
       throw httpError(400, 'Chaque ligne doit avoir un id_collaborateur')
     if (!Number.isFinite(quantite_vendue))
       throw httpError(400, `Quantité invalide pour le lot ${id_lot}`)
+
+    // ── GARDE-FOU UNITÉ ENTIÈRE ──────────────────────────────────────────────
+    const lotInfo = uniteByLot.get(id_lot)
+    const uniteMesure = lotInfo?.unite_mesure
+    if (uniteMesure && !uniteMesure.est_decimal) {
+      if (!Number.isInteger(quantite_vendue)) {
+        const nomProduit = lotInfo?.nom ?? `lot #${id_lot}`
+        throw httpError(
+          400,
+          `Quantité décimale (${quantite_vendue}) invalide pour "${nomProduit}" ` +
+          `dont l'unité "${uniteMesure.code}" n'accepte que des entiers`
+        )
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     montant_ht += quantite_vendue * prix_initial
     montant_marge += marge * quantite_vendue

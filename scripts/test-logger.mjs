@@ -1,100 +1,180 @@
 /**
- * Script de test autonome du logger serveur PEJAA.
- * Exécute sans Next.js — teste directement les modules Node.js.
- *
- * Usage : node --experimental-vm-modules scripts/test-logger.mjs
- *   ou  : npx tsx scripts/test-logger.mjs
+ * Script de test du logger serveur PEJAA — contexte + concurrence.
+ * Usage : npx tsx scripts/test-logger.mjs
  */
 
-// Simulation des variables d'environnement
-process.env.NODE_ENV = 'development'
-process.env.PEJAA_LOGGER_ENABLED = 'true'
-process.env.PEJAA_LOG_SLOW_OPERATION_MS = '50'      // seuil bas pour le test
-process.env.PEJAA_LOG_LARGE_RESULT_COUNT = '3'       // seuil bas pour le test
-process.env.PEJAA_LOG_REPETITION_THRESHOLD = '4'     // seuil bas pour le test
-process.env.PEJAA_LOG_REPETITION_WINDOW_MS = '1000'
-process.env.PEJAA_LOGS_DIR = 'logs'
+process.env.NODE_ENV                       = 'development'
+process.env.PEJAA_LOGGER_ENABLED           = 'true'
+process.env.PEJAA_LOG_SLOW_OPERATION_MS    = '60'
+process.env.PEJAA_LOG_LARGE_RESULT_COUNT   = '5'
+process.env.PEJAA_LOG_REPETITION_THRESHOLD = '3'
+process.env.PEJAA_LOG_REPETITION_WINDOW_MS = '1500'
+process.env.PEJAA_LOGS_DIR                 = 'logs'
 
-// Import dynamique car le module utilise des imports ES/CJS selon le contexte
-const { createRequire } = await import('module')
-const { pathToFileURL } = await import('url')
-const { resolve } = await import('path')
+const { serverLogger } = await import('../lib/server-logger/logger.ts')
+const { withRequestContext, makeRequestContext, contextLabel } =
+  await import('../lib/server-logger/context.ts')
 
-// On importe via tsx/ts-node ou directement si compilé
-// Pour ce test on utilise les fichiers .ts via tsx
-import { register } from 'node:module'
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Fallback : importer directement si tsx est disponible
-let serverLogger, slog, fmtSection, fmtStep, fmtSuccess, fmtMs
-
-try {
-  const loggerMod = await import('../lib/server-logger/logger.ts')
-  serverLogger = loggerMod.serverLogger
-
-  const fmtMod = await import('../lib/server-logger/formatter.ts')
-  fmtSection = fmtMod.fmtSection
-  fmtStep = fmtMod.fmtStep
-  fmtSuccess = fmtMod.fmtSuccess
-  fmtMs = fmtMod.fmtMs
-} catch (e) {
-  console.error('Import failed:', e.message)
-  console.error('Utiliser : npx tsx scripts/test-logger.mjs')
-  process.exit(1)
+/** Simule une opération DB avec durée configurable et résultat tableau */
+async function fakeDb(ms, rows = 1) {
+  await new Promise(r => setTimeout(r, ms))
+  return Array.from({ length: rows }, (_, i) => ({ id: i + 1 }))
 }
 
-const logger = serverLogger.forRequest('req_test01')
-
-console.log('\n=== Test du logger serveur PEJAA ===\n')
-
-// ── Cas 1 : section + étapes ────────────────────────────────────────────────
-logger.requestStart('GET', '/api/test')
-logger.section("Préparation pour l'annulation de vente")
-logger.step('Récupération des ventes')
-
-// Simule une opération de 25ms
-const op1 = logger.operation('Lecture DB ventes', { dbOperation: 'vente.findMany' })
-await new Promise(r => setTimeout(r, 25))
-op1.success({ count: 24 })
-
-logger.step('Récupération des articles')
-const op2 = logger.operation('Lecture DB articles', { dbOperation: 'venteArticle.findMany' })
-await new Promise(r => setTimeout(r, 15))
-op2.success({ count: 87 })
-
-// ── Cas 2 : opération lente ─────────────────────────────────────────────────
-logger.section('Test opération lente')
-const opSlow = logger.operation('Requête lente', { dbOperation: 'vente.findMany' })
-await new Promise(r => setTimeout(r, 75)) // > seuil 50ms
-opSlow.success({ count: 12482 }) // > seuil 3 lignes → double alerte
-
-// ── Cas 3 : erreur ──────────────────────────────────────────────────────────
-logger.section('Test erreur')
-const opErr = logger.operation('Opération échouée', { dbOperation: 'produit.create' })
-await new Promise(r => setTimeout(r, 5))
-opErr.failure(new Error('PEJAA_TEST_ERROR: contrainte unique violée'))
-
-// ── Cas 4 : appels répétitifs ───────────────────────────────────────────────
-logger.section('Test répétition')
-for (let i = 0; i < 5; i++) {
-  serverLogger.metrics.record('GET /api/unites-mesure', true, 12)
+/** Simule une erreur DB */
+async function fakeDbError(ms) {
+  await new Promise(r => setTimeout(r, ms))
+  const err = new Error('contrainte unique violée')
+  err.code = 'P2002'
+  throw err
 }
-// 5ème appel déclenche l'alerte (seuil = 4)
 
-// ── Cas 5 : info / warning ──────────────────────────────────────────────────
-logger.info('Traitement terminé')
-logger.warning('Volume de données à surveiller')
+// ─────────────────────────────────────────────────────────────────────────────
+// TEST 1 : contexte métier + [DB] rattaché automatiquement
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── Résumé ──────────────────────────────────────────────────────────────────
-await new Promise(r => setTimeout(r, 100)) // laisse le setImmediate se vider
+console.log('\n════ TEST 1 : contexte métier ════\n')
+
+const { logger: l1, run: run1 } = serverLogger.forRequest('GET /api/ventes/annulation')
+
+await run1(async () => {
+  l1.requestStart('GET', '/api/ventes/annulation')
+
+  l1.section("Préparation pour l'annulation de vente")
+
+  // Étape 1 — succès normal
+  l1.step('Récupération des ventes')
+  const op1 = l1.operation('Lecture ventes', { dbOperation: 'Vente.findMany' })
+  const ventes = await fakeDb(25, 24)
+  op1.success({ count: ventes.length })
+
+  // Étape 2 — succès avec volume important (> seuil 5)
+  l1.step('Récupération des articles')
+  const op2 = l1.operation('Lecture articles', { dbOperation: 'VenteArticle.findMany' })
+  const articles = await fakeDb(15, 87)
+  op2.success({ count: articles.length })
+
+  // Étape 3 — opération lente (> seuil 60ms)
+  l1.section('Vérification stock')
+  l1.step('Lecture stock actuel')
+  const op3 = l1.operation('Stock', { dbOperation: 'StockActuel.findMany' })
+  const stock = await fakeDb(80, 3)
+  op3.success({ count: stock.length })
+
+  // Étape 4 — erreur
+  l1.section('Finalisation')
+  l1.step("Enregistrement de l'annulation")
+  const op4 = l1.operation("Création annulation", { dbOperation: 'Vente.update' })
+  try {
+    await fakeDbError(10)
+    op4.success()
+  } catch (err) {
+    op4.failure(err)
+  }
+
+  l1.requestEnd(180, false)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEST 2 : isolation concurrente A / B
+// Les deux flux s'exécutent en parallèle — les contextes ne doivent pas fuir.
+// ─────────────────────────────────────────────────────────────────────────────
+
+console.log('\n════ TEST 2 : isolation concurrente A/B ════\n')
+
+const { logger: lA, run: runA } = serverLogger.forRequest('GET /api/ventes')
+const { logger: lB, run: runB } = serverLogger.forRequest('POST /api/livraisons')
+
+// Démarre A et B en parallèle — leurs sections/steps ne doivent pas se mélanger
+await Promise.all([
+
+  runA(async () => {
+    lA.requestStart('GET', '/api/ventes')
+    lA.section('Annulation de vente')
+
+    lA.step('Récupération des ventes')
+    const opA1 = lA.operation('Ventes', { dbOperation: 'Vente.findMany' })
+    // Délai plus long → B va s'intercaler
+    const ventesA = await fakeDb(50, 12)
+    opA1.success({ count: ventesA.length })
+
+    lA.step('Récupération des collaborateurs')
+    const opA2 = lA.operation('Collabs', { dbOperation: 'Collaborateur.findMany' })
+    const collabs = await fakeDb(20, 3)
+    opA2.success({ count: collabs.length })
+
+    lA.requestEnd(90, true)
+
+    // Vérification : le contexte de A doit contenir la route de A
+    const ctx = (await import('../lib/server-logger/context.ts')).getRequestContext()
+    const label = contextLabel(ctx)
+    const ok = label.includes('GET /api/ventes')
+    console.log(`[ISOLATION] A contexte OK : ${ok} — label="${label}"`)
+    if (!ok) process.exitCode = 1
+  }),
+
+  runB(async () => {
+    lB.requestStart('POST', '/api/livraisons')
+    lB.section('Création de livraison')
+
+    lB.step('Récupération des lots disponibles')
+    const opB1 = lB.operation('Lots', { dbOperation: 'LivraisonItem.findMany' })
+    const lots = await fakeDb(30, 7)
+    opB1.success({ count: lots.length })
+
+    lB.step('Vérification utilisateur')
+    const opB2 = lB.operation('Utilisateur', { dbOperation: 'Utilisateur.findUnique' })
+    const user = await fakeDb(15, 1)
+    opB2.success({ count: user.length })
+
+    lB.requestEnd(60, true)
+
+    // Vérification : le contexte de B doit contenir la route de B
+    const ctx = (await import('../lib/server-logger/context.ts')).getRequestContext()
+    const label = contextLabel(ctx)
+    const ok = label.includes('POST /api/livraisons')
+    console.log(`[ISOLATION] B contexte OK : ${ok} — label="${label}"`)
+    if (!ok) process.exitCode = 1
+  }),
+
+])
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEST 3 : répétitions avec répartition par contexte
+// Même opération appelée depuis deux contextes différents
+// ─────────────────────────────────────────────────────────────────────────────
+
+console.log('\n════ TEST 3 : répétitions avec contextes ════\n')
+
+// Contexte Auth (2 appels)
+for (let i = 0; i < 2; i++) {
+  serverLogger.metrics.record('Utilisateur.findUnique', true, 8,
+    'GET /api/stock › Auth / vérification utilisateur')
+}
+
+// Contexte Création lot (1 appel)
+serverLogger.metrics.record('Utilisateur.findUnique', true, 12,
+  'POST /api/lots › Création lot › Identification créateur')
+
+// Déclenchement de l'alerte (seuil = 3)
+serverLogger.metrics.record('Utilisateur.findUnique', true, 9,
+  'GET /api/collaborateurs › Chargement profil')
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Résumé + flush
+// ─────────────────────────────────────────────────────────────────────────────
+
+await new Promise(r => setTimeout(r, 300))
 serverLogger.printSummary()
-logger.requestEnd(250, true)
-
-// Flush final
-await new Promise(r => setTimeout(r, 200))
-serverLogger['writer'].flushSync()
+await new Promise(r => setTimeout(r, 300))
 
 const sessionDir = serverLogger.session.sessionDir
-console.log(`\n✓ Session créée dans : ${sessionDir}`)
-console.log('  → session.log')
-console.log('  → errors.log')
-console.log('  → metrics.json')
+console.log(`\n✓ Session : ${sessionDir}`)
+console.log(`  → session.log\n  → errors.log\n  → metrics.json`)
+if (process.exitCode === 1) {
+  console.error('\n✗ ÉCHEC : isolation des contextes incorrecte')
+} else {
+  console.log('\n✓ Isolation A/B correcte')
+}

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/db'
+import { withRequestContext, makeRequestContext, updateRequestContext } from '@/lib/server-logger/context'
+import { makeRequestId } from '@/lib/server-logger/formatter'
+import { serverLogger } from '@/lib/server-logger/logger'
+import { getDefaultSection } from '@/lib/server-logger/route-context'
 
 export type AuthenticatedHandler = (
   req: NextRequest,
@@ -34,6 +38,35 @@ export function withAuth(
     req: NextRequest,
     context: { params: Promise<Record<string, string>> }
   ): Promise<NextResponse> => {
+    // ── Contexte ALS — créé immédiatement, avant toute opération Prisma ────
+    // Toutes les requêtes DB qui suivent (RBAC + handler métier) sont ainsi
+    // rattachées au bon requestId et à la bonne route.
+    const requestId = makeRequestId()
+    const method    = req.method ?? 'GET'
+    const pathname  = req.nextUrl?.pathname ?? 'unknown'
+    const route     = `${method} ${pathname}`
+    const alsCtx    = makeRequestContext({ requestId, route })
+
+    return withRequestContext(alsCtx, async () => {
+      // ── 1. Enregistrement HTTP (détection répétitions HTTP) ───────────────
+      // Toujours enregistré, même si le logger textuel est désactivé.
+      if (serverLogger.config.enabled) {
+        serverLogger.httpMetrics.record(requestId, route)
+      }
+
+      // ── 2. Log de début de requête ────────────────────────────────────────
+      if (serverLogger.config.enabled) {
+        serverLogger.emit([``, `[${requestId}] → ${route}`])
+      }
+
+      // ── 3. Section Auth — RBAC ────────────────────────────────────────────
+      // Toutes les opérations Prisma suivantes (Utilisateur.findUnique,
+      // AccessDomain.findFirst, etc.) sont rattachées à la section "Auth".
+      if (serverLogger.config.enabled) {
+        serverLogger.emit([``, `[${requestId}] ▸ Auth`, ``])
+        updateRequestContext({ section: 'Auth', step: null })
+      }
+
     // 1. Extraire le token : header Authorization en priorité, puis cookie
     let token: string | null = null
     const authHeader = req.headers.get('authorization')
@@ -166,6 +199,12 @@ export function withAuth(
     // 6. Résoudre les params (async dans Next.js 16)
     const resolvedParams = await context.params
 
+    // ── 4. Reset du contexte avant le handler métier ──────────────────────
+    // Rien de la phase Auth ne doit fuiter dans le contexte métier.
+    // La section par défaut de la route est appliquée ici si disponible.
+    const defaultSection = getDefaultSection(route)
+    updateRequestContext({ section: defaultSection, step: null })
+
     // 7. Appeler le handler avec le contexte auth
     try {
       return await handler(req, { params: resolvedParams }, { user: user as DbUser, tenantId })
@@ -177,5 +216,7 @@ export function withAuth(
       console.error('[Route Handler]', err)
       return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 })
     }
+
+    }) // fin withRequestContext
   }
 }

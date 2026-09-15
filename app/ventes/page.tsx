@@ -13,6 +13,7 @@ import { getPvId } from '@/lib/pointVente'
 import type { FilterState } from '@/components/ResponsiveDataTable/ColumnFilterDropdown'
 import VenteAnnulationModal from '@/components/Ventes/VenteAnnulationModal'
 import type { LigneVente } from '@/components/Ventes/VenteAnnulationModal'
+import ProduitMiniModal from '@/components/Ventes/ProduitMiniModal'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>
@@ -49,6 +50,8 @@ function VentesPageContent() {
   const [annulationDefaultAll, setAnnulationDefaultAll] = useState(false)
   const [annulationLocked, setAnnulationLocked] = useState(false)
   const [annulationVenteId, setAnnulationVenteId] = useState<number | undefined>()
+  // Mini-modal produit
+  const [produitModal, setProduitModal] = useState<{ open: boolean; idLot?: number; libelle?: string }>({ open: false })
 
   const [filters, setFilters] = useState({
     q: '',
@@ -240,8 +243,11 @@ function VentesPageContent() {
           marge:              0,
           montant_ht:         Number(l.montant_ht ?? 0),
           raison_suppression: l.raison_suppression ?? null,
+          unite_code:         l.unite_code ?? null,
+          est_decimal:        l.est_decimal ?? false,
+          precision:          l.precision ?? 0,
         }
-      }).filter((l: LigneVente) => l.quantite_annulable > 0) // lignes déjà totalement annulées exclues
+      }).filter((l: LigneVente) => l.quantite_annulable > 0)
 
       if (lignesRaw.length === 0) {
         showToast('Toutes les lignes de cette vente ont déjà été annulées', 'info')
@@ -272,16 +278,26 @@ function VentesPageContent() {
     },
     {
       field: 'montant_ht', headerName: 'Qté / Montant', width: '160px', minWidth: '130px', sortable: true, filterable: true, filterKind: 'numeric' as const,
-      renderCell: (row: AnyRecord) => (
-        <div className="text-right">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">
-            {row.quantite_vendue} x {row.montant_ht ? `${Number(row.montant_ht).toLocaleString('fr-FR')} Ar` : '-'}
+      renderCell: (row: AnyRecord) => {
+        const qty = Number(row.quantite_vendue)
+        const retourne = Number(row.quantite_retournee ?? 0)
+        const unite = row.unite_code ? ` ${row.unite_code}` : ''
+        return (
+          <div className="text-right">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white">
+              {qty.toLocaleString('fr-FR')}{unite} × {row.montant_ht ? `${Number(row.prix_initial ?? 0).toLocaleString('fr-FR')} Ar` : '-'}
+            </div>
+            {retourne > 0 && (
+              <div className="text-xs text-amber-600 dark:text-amber-400">
+                Retourné : {retourne.toLocaleString('fr-FR')}{unite}
+              </div>
+            )}
+            <div className="text-xs text-green-600 dark:text-green-400">
+              Marge: {row.montant_marge ? `${Number(row.montant_marge).toLocaleString('fr-FR')} Ar` : '-'}
+            </div>
           </div>
-          <div className="text-xs text-green-600 dark:text-green-400">
-            Marge: {row.montant_marge ? `${Number(row.montant_marge).toLocaleString('fr-FR')} Ar` : '-'}
-          </div>
-        </div>
-      )
+        )
+      }
     },
     {
       field: 'date_vente', headerName: 'Dates', width: '180px', minWidth: '140px', sortable: true, filterable: true, filterKind: 'date' as const,
@@ -330,6 +346,10 @@ function VentesPageContent() {
               prix_initial:       Number(row.prix_initial ?? (row.montant_ht / Math.max(1, row.quantite_vendue))),
               marge:              0,
               montant_ht:         Number(row.montant_ht ?? 0),
+              // Unité de mesure — présente dans la row atomique si la table les expose
+              unite_code:   row.unite_code ?? null,
+              est_decimal:  row.est_decimal ?? false,
+              precision:    row.precision ?? 0,
             }
             if (ligneUnique.quantite_annulable <= 0) {
               showToast('Cette ligne a déjà été entièrement annulée', 'info')
@@ -586,21 +606,58 @@ function VentesPageContent() {
                             <tr>
                               <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Produit</th>
                               <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Collaborateur</th>
-                              <th className="px-3 py-2 text-right font-semibold text-slate-500 dark:text-slate-400">Qté</th>
+                              <th className="px-3 py-2 text-right font-semibold text-slate-500 dark:text-slate-400">Vendu</th>
+                              <th className="px-3 py-2 text-right font-semibold text-slate-500 dark:text-slate-400">Retourné</th>
                               <th className="px-3 py-2 text-right font-semibold text-slate-500 dark:text-slate-400">Montant</th>
                               <th className="px-3 py-2 text-right font-semibold text-slate-500 dark:text-slate-400">Marge</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-900/40">
-                            {detailData.lignes.map((ligne: AnyRecord) => (
-                              <tr key={ligne.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                <td className="px-3 py-2 text-slate-800 dark:text-slate-200 font-medium">{ligne.libelle_produit || `Lot #${ligne.id_lot}`}</td>
-                                <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{ligne.collaborateur_nom || '—'}</td>
-                                <td className="px-3 py-2 text-right font-mono text-slate-800 dark:text-slate-200">{Number(ligne.quantite_vendue).toLocaleString('fr-FR')}</td>
-                                <td className="px-3 py-2 text-right font-mono text-slate-800 dark:text-slate-200">{ligne.montant_ht ? `${Number(ligne.montant_ht).toLocaleString('fr-FR')} Ar` : '—'}</td>
-                                <td className="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">{ligne.montant_marge ? `${Number(ligne.montant_marge).toLocaleString('fr-FR')} Ar` : '—'}</td>
-                              </tr>
-                            ))}
+                            {detailData.lignes.map((ligne: AnyRecord) => {
+                              const unite = ligne.unite_code ? ` ${ligne.unite_code}` : ''
+                              const retourne = Number(ligne.quantite_retournee ?? 0)
+                              return (
+                                <tr
+                                  key={ligne.id}
+                                  className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                                  onClick={() => setProduitModal({ open: true, idLot: ligne.id_lot, libelle: ligne.libelle_produit })}
+                                  title="Cliquer pour voir le détail du produit"
+                                >
+                                  <td className="px-3 py-2 text-slate-800 dark:text-slate-200 font-medium">
+                                    <span className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                      {ligne.libelle_produit || `Lot #${ligne.id_lot}`}
+                                    </span>
+                                    {ligne.unite_code && (
+                                      <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono border ${
+                                        ligne.est_decimal
+                                          ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700'
+                                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700'
+                                      }`}>
+                                        {ligne.unite_code}
+                                      </span>
+                                    )}
+                                    {retourne > 0 && (
+                                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                        Retourné : {retourne.toLocaleString('fr-FR')}{unite}
+                                        {ligne.raison_suppression ? ` — ${ligne.raison_suppression}` : ''}
+                                      </p>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">{ligne.collaborateur_nom || '—'}</td>
+                                  <td className="px-3 py-2 text-right font-mono text-slate-800 dark:text-slate-200">
+                                    {Number(ligne.quantite_vendue).toLocaleString('fr-FR')}{unite}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono">
+                                    {retourne > 0
+                                      ? <span className="text-amber-600 dark:text-amber-400">{retourne.toLocaleString('fr-FR')}{unite}</span>
+                                      : <span className="text-slate-400">—</span>
+                                    }
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-slate-800 dark:text-slate-200">{ligne.montant_ht ? `${Number(ligne.montant_ht).toLocaleString('fr-FR')} Ar` : '—'}</td>
+                                  <td className="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">{ligne.montant_marge ? `${Number(ligne.montant_marge).toLocaleString('fr-FR')} Ar` : '—'}</td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -644,16 +701,49 @@ function VentesPageContent() {
                     <div className="p-4 grid grid-cols-2 gap-x-6 gap-y-3 bg-white dark:bg-slate-900/40 text-sm">
                       <div className="col-span-2">
                         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Produit</p>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">{detailData.libelle_produit || `Lot #${detailData.id_lot}`}</p>
+                        <button
+                          type="button"
+                          onClick={() => setProduitModal({ open: true, idLot: detailData.id_lot, libelle: detailData.libelle_produit })}
+                          className="font-medium text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 text-left underline-offset-2 hover:underline transition-colors"
+                          title="Voir le détail du produit"
+                        >
+                          {detailData.libelle_produit || `Lot #${detailData.id_lot}`}
+                        </button>
+                        {detailData.unite_code && (
+                          <span className={`ml-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border ${
+                            detailData.est_decimal
+                              ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-700'
+                              : 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700'
+                          }`}>
+                            {detailData.unite_code}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Collaborateur</p>
                         <p className="text-slate-900 dark:text-slate-100">{detailData.collaborateur_nom || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Quantité</p>
-                        <p className="font-mono text-slate-900 dark:text-slate-100">{Number(detailData.quantite_vendue).toLocaleString('fr-FR')}</p>
+                        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Quantité vendue</p>
+                        <p className="font-mono text-slate-900 dark:text-slate-100">
+                          {Number(detailData.quantite_vendue).toLocaleString('fr-FR')}
+                          {detailData.unite_code ? ` ${detailData.unite_code}` : ''}
+                        </p>
                       </div>
+                      {Number(detailData.quantite_retournee ?? 0) > 0 && (
+                        <div>
+                          <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Retourné</p>
+                          <p className="font-mono text-amber-600 dark:text-amber-400">
+                            {Number(detailData.quantite_retournee).toLocaleString('fr-FR')}
+                            {detailData.unite_code ? ` ${detailData.unite_code}` : ''}
+                          </p>
+                          {detailData.raison_suppression && (
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              Motif : {detailData.raison_suppression}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <div>
                         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Montant</p>
                         <p className="font-mono text-slate-900 dark:text-slate-100">{detailData.montant_ht ? `${Number(detailData.montant_ht).toLocaleString('fr-FR')} Ar` : '—'}</p>
@@ -685,6 +775,13 @@ function VentesPageContent() {
           }}
         />
       )}
+
+      <ProduitMiniModal
+        open={produitModal.open}
+        onClose={() => setProduitModal({ open: false })}
+        idLot={produitModal.idLot}
+        libelleProduit={produitModal.libelle}
+      />
 
     </div>
   )

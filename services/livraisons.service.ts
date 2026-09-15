@@ -145,6 +145,15 @@ export async function createLivraison({
     })
 
     // 2. Create lines (LivraisonItem) + StockActuel + StockMouvement
+
+    // Pré-charger les unités de mesure pour toutes les lignes en un seul appel
+    const produitIds = lignes.map(l => Number(l.id_produit)).filter(Boolean)
+    const produitUnites = await tx.produitCatalogue.findMany({
+      where: { id_produit: { in: produitIds } },
+      select: { id_produit: true, nom: true, unite_mesure: { select: { code: true, est_decimal: true } } },
+    })
+    const uniteByProduit = new Map(produitUnites.map(p => [p.id_produit, p]))
+
     for (const l of lignes) {
       const id_produit = Number(l.id_produit)
       const quantite_initiale = Number(l.quantite_initiale ?? l.quantite ?? 0)
@@ -155,6 +164,19 @@ export async function createLivraison({
       if (!quantite_initiale || quantite_initiale <= 0) {
         throw httpError(400, 'quantite_initiale doit être > 0')
       }
+
+      // ── GARDE-FOU UNITÉ ENTIÈRE ──────────────────────────────────────────────
+      const produitInfo = uniteByProduit.get(id_produit)
+      if (produitInfo?.unite_mesure && !produitInfo.unite_mesure.est_decimal) {
+        if (!Number.isInteger(quantite_initiale)) {
+          throw httpError(
+            400,
+            `Quantité décimale (${quantite_initiale}) invalide pour "${produitInfo.nom}" ` +
+            `dont l'unité "${produitInfo.unite_mesure.code}" n'accepte que des entiers`
+          )
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────────
 
       // Create LivraisonItem
       const item = await tx.livraisonItem.create({

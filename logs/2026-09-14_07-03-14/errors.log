@@ -1,0 +1,29 @@
+════════════════════════════════════════════════════════
+PEJAA ERRORS — session 2026-09-14 07:03:14.423
+════════════════════════════════════════════════════════
+
+
+═══════════════════════ ERROR ══════════════════════════
+
+Erreur DB : EcheanceAbonnement.create
+
+Opération : EcheanceAbonnement.create
+
+Durée : 17 ms
+
+Type : PrismaClientKnownRequestError
+
+Code Prisma : P2002
+
+Message : 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].echeanceAbonnement.create()` invocation in
+D:\Code\Pejaa\next_app\.next\dev\server\chunks\[root-of-the-server]__0v46s1k._.js:2231:160
+
+  2228 if (!souscription) throw (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["httpError"])(404, 'Souscription introuvable');
+  2229 if (souscription.canceled_at) throw (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["httpError"])(409, 'Impossible d\'ajouter une échéance à une souscription annulée');
+  2230 if (souscription.statut === 'TERMINEE') throw (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["httpError"])(409, 'Impossible d\'ajouter une échéance à une souscription terminée');
+→ 2231 const row = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].echeanceAbonnement.create(
+Unique constraint failed on the (not available)
+
+════════════════════════════════════════════════════════
+

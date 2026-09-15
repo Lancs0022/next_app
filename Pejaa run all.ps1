@@ -3,7 +3,7 @@ $path1 = "D:\Code\freellmapi"
 # On utilise des apostrophes simples ici pour que $env reste du texte brut jusqu'à l'exécution dans la nouvelle fenêtre
 $cmd1  = 'npm run dev'
 
-$path2 = "C:\workspace\Pejaa\next_app"
+$path2 = "D:\Code\Pejaa\next_app"
 $cmd2  = "npx next dev --port 6969 -H 0.0.0.0"
 
 # Fonctions pour lancer chaque instance

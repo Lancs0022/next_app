@@ -10,7 +10,7 @@ function createPrismaClient(): PrismaClient {
   })
 
   const base = new PrismaClient({
-    // Les logs natifs Prisma sont réduits au minimum.
+    // Logs natifs Prisma réduits au minimum.
     // L'observation des opérations est déléguée au middleware PEJAA via $extends.
     log: process.env.NODE_ENV === 'production' ? ['error'] : ['error', 'warn'],
     adapter,
@@ -18,11 +18,12 @@ function createPrismaClient(): PrismaClient {
 
   // ─── Instrumentation PEJAA via Prisma Client Extensions ─────────────────
   //
-  // $extends({ query: { $allModels: { $allOperations } } }) intercepte chaque
-  // opération Prisma. TypeScript infère les types — on ne les annote pas.
+  // Timing : performance.now() entoure UNIQUEMENT query(args).
+  // Le logging est délégué à setImmediate — ne bloque jamais la réponse HTTP
+  // et n'est pas inclus dans la mesure de durée.
   //
-  // Actif uniquement quand PEJAA_LOGGER_ENABLED=true (ou en dev par défaut).
-  // L'import dynamique du logger évite tout cycle de dépendances au démarrage.
+  // Contexte : lu SYNCHRONIQUEMENT (avant setImmediate) pour capturer l'état
+  // exact de l'ALS au moment de l'appel, pas après.
 
   const loggerEnabled =
     process.env.PEJAA_LOGGER_ENABLED === 'true' ||
@@ -34,9 +35,8 @@ function createPrismaClient(): PrismaClient {
   const extended = base.$extends({
     query: {
       $allModels: {
-        // TypeScript infère le type du callback depuis DynamicQueryExtensionCb.
-        // Ne pas annoter `args` ni `query` — l'inférence est correcte.
         async $allOperations({ model, operation, args, query }) {
+          // ── 1. Mesure DB uniquement ───────────────────────────────────────
           const start = performance.now()
           let result: unknown
           let caught: unknown
@@ -48,51 +48,89 @@ function createPrismaClient(): PrismaClient {
           }
 
           const durationMs = performance.now() - start
-          const key = `${model}.${operation}`
 
-          // Observation asynchrone : ne bloque jamais la réponse HTTP.
-          // setImmediate reporte le travail de logging après la réponse.
+          // ── 2. Capture synchrone du contexte ALS ──────────────────────────
+          // On lit MAINTENANT (même tick) pour isoler ce contexte précis.
+          // Si on attendait dans setImmediate, une autre requête concurrente
+          // pourrait avoir écrasé le store.
+          let capturedCtx: {
+            requestId: string
+            route: string
+            section: string | null
+            step: string | null
+          } | null = null
+
+          try {
+            // Import synchronisé (déjà en cache après le premier appel)
+            const ctxMod = await import('./server-logger/context')
+            const ctx = ctxMod.getRequestContext()
+            if (ctx) {
+              capturedCtx = {
+                requestId: ctx.requestId,
+                route:     ctx.route,
+                section:   ctx.section,
+                step:      ctx.step,
+              }
+            }
+          } catch {
+            // silencieux
+          }
+
+          const key       = `${model}.${operation}`
+          const ts        = Date.now()
+          const isSuccess = caught === undefined
+
+          // ── 3. Logging asynchrone ─────────────────────────────────────────
           setImmediate(async () => {
             try {
               const { serverLogger } = await import('./server-logger/logger')
               const { slowOperationMs, largeResultCount } = serverLogger.config
 
-              // Toujours enregistrer les métriques (même pour les succès normaux)
-              serverLogger.metrics.record(key, caught === undefined, durationMs)
+              // Métriques : toujours enregistrées
+              serverLogger.metrics.record(key, isSuccess, durationMs, capturedCtx
+                ? {
+                    requestId:  capturedCtx.requestId,
+                    route:      capturedCtx.route,
+                    section:    capturedCtx.section,
+                    step:       capturedCtx.step,
+                    timestamp:  ts,
+                    durationMs,
+                    ok: isSuccess,
+                  }
+                : undefined
+              )
 
-              // Logger structuré uniquement pour ce qui est remarquable :
-              // lenteur, volume important, ou erreur
-              const count = Array.isArray(result) ? result.length : undefined
+              // Log structuré pour toutes les opérations en dev (pas uniquement les remarquables)
+              const count   = Array.isArray(result) ? result.length : undefined
               const isSlow  = durationMs >= slowOperationMs
               const isLarge = count !== undefined && count >= largeResultCount
-              const isError = caught !== undefined
+              const isError = !isSuccess
 
-              if (!isSlow && !isLarge && !isError) return
-
-              const { fmtDb, fmtSuccess, fmtFailure, fmtSlow, fmtLarge, fmtErrorBlock } =
-                await import('./server-logger/formatter')
+              const {
+                fmtDbWithContext, fmtDbResult,
+                fmtSlow, fmtLarge, fmtErrorBlock,
+              } = await import('./server-logger/formatter')
 
               if (isError) {
-                const lines = fmtErrorBlock({
-                  title: `Erreur DB : ${key}`,
-                  operation: key,
+                serverLogger.emit(fmtErrorBlock({
+                  title:      `Erreur DB : ${key}`,
+                  operation:  key,
                   durationMs,
                   errorType:  extractType(caught),
                   prismaCode: extractCode(caught),
                   message:    extractMsg(caught),
-                })
-                serverLogger.emit(lines, true)
+                }), true)
               } else {
                 const lines: string[] = [
-                  fmtDb(key, 0),
-                  ...fmtSuccess(durationMs, { count }),
+                  ...fmtDbWithContext(key, capturedCtx),
+                  fmtDbResult(durationMs, true, count),
                 ]
-                if (isSlow)  lines.push(fmtSlow(durationMs, 0))
-                if (isLarge) lines.push(fmtLarge(count!, 0))
+                if (isSlow)  lines.push(fmtSlow(durationMs))
+                if (isLarge) lines.push(fmtLarge(count!))
                 serverLogger.emit(lines, false)
               }
             } catch {
-              // Ne jamais laisser le logger crasher l'application
+              // Ne jamais crasher l'app à cause du logger
             }
           })
 
@@ -103,8 +141,6 @@ function createPrismaClient(): PrismaClient {
     },
   })
 
-  // $extends retourne un type étendu. On caste en PrismaClient pour conserver
-  // les imports existants (import { prisma } from '@/lib/db') sans modification.
   return extended as unknown as PrismaClient
 }
 
@@ -115,7 +151,7 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma
 }
 
-// ─── Extraction d'erreur (dupliquée ici pour éviter un import au boot) ────────
+// ─── Extraction d'erreur ──────────────────────────────────────────────────────
 
 function extractMsg(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err)

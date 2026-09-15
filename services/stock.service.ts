@@ -596,12 +596,18 @@ export async function updateLotPrixMarge({
 // ─── Catalogue with aggregated stock quantities ────────────────────────────
 
 export async function listCatalogueStock(tenantId: number, id_collaborateur?: string) {
+  // ── Contexte métier — slog annote uniquement, Prisma mesure automatiquement ──
+  // Ne jamais appeler slog.db() ou slog.success() ici.
+  const { slog } = await import('@/lib/server-logger')
+  slog.section('Chargement du catalogue stock')
+
   const where: Record<string, unknown> = { tenant_id: tenantId, statut: 'actif' }
   if (id_collaborateur) {
     const cid = Number(id_collaborateur)
     if (!isNaN(cid)) where.id_collaborateur = cid
   }
 
+  slog.step('Récupération du catalogue produit')
   const produits = await prisma.produitCatalogue.findMany({
     where,
     orderBy: { id_produit: 'desc' },
@@ -609,7 +615,7 @@ export async function listCatalogueStock(tenantId: number, id_collaborateur?: st
 
   if (produits.length === 0) return { data: [] }
 
-  // Resolve collaborateur names
+  slog.step('Récupération des collaborateurs')
   const collabIds = [...new Set(produits.map(p => p.id_collaborateur))]
   const collaborateurs = await prisma.collaborateur.findMany({
     where: { id_collaborateur: { in: collabIds } },
@@ -617,7 +623,7 @@ export async function listCatalogueStock(tenantId: number, id_collaborateur?: st
   })
   const collabMap = Object.fromEntries(collaborateurs.map(c => [c.id_collaborateur, c.nom]))
 
-  // Get all lot IDs for these products, then aggregate stock quantities
+  slog.step('Récupération des lots en stock')
   const lots = await prisma.livraisonItem.findMany({
     where: {
       tenant_id: tenantId,
@@ -632,6 +638,7 @@ export async function listCatalogueStock(tenantId: number, id_collaborateur?: st
 
   let stockByLot: Record<number, number> = {}
   if (lotIds.length > 0) {
+    slog.step('Agrégation du stock actuel')
     const stocks = await prisma.stockActuel.findMany({
       where: { tenant_id: tenantId, id_lot: { in: lotIds } },
       select: { id_lot: true, quantite: true },
@@ -650,7 +657,7 @@ export async function listCatalogueStock(tenantId: number, id_collaborateur?: st
     }
   }
 
-  // Resolve unités de mesure
+  slog.step('Récupération des unités de mesure')
   const uniteIds = [...new Set(produits.map(p => p.id_unite).filter((id): id is number => id != null))]
   const unites = uniteIds.length > 0
     ? await prisma.uniteDeMesure.findMany({

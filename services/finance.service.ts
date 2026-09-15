@@ -48,9 +48,26 @@ export async function createTransaction({
 }
 
 export async function sendAbonnementReminders() {
+  // Charge les abonnements actifs avec leurs souscriptions non annulées,
+  // leurs échéances en attente, et les paiements non annulés de chaque échéance.
   const abonnements = await prisma.abonnement.findMany({
-    where: { actif: true },
-    include: { paiements: true },
+    where: { statut: 'ACTIVE' },
+    include: {
+      souscriptions: {
+        where: { canceled_at: null },
+        include: {
+          echeances: {
+            where: {
+              canceled_at: null,
+              statut: { in: ['en_attente', 'partiellement_payee'] },
+            },
+            include: {
+              paiements: { where: { canceled_at: null } },
+            },
+          },
+        },
+      },
+    },
   })
   console.log(`[Cron] ${abonnements.length} abonnement(s) actif(s) vérifiés pour rappels`)
 }

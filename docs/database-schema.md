@@ -269,8 +269,111 @@ Catégories de flux financiers.
 
 ## ABONNEMENTS
 
-### abonnement, abonnement_paiement, abonnement_collaborateur
-Offres d'abonnement, paiements et associations collaborateur.
+Architecture en 5 couches :
+
+```
+Abonnement                → offre commerciale / catalogue
+    └── SouscriptionAbonnement  → relation Collaborateur ↔ Offre (active, suspendue, terminée ou annulée)
+            └── EcheanceAbonnement     → obligation financière d'une période
+                    └── PaiementAbonnement    → encaissement réel
+                            └── TransactionFinanciere → journal financier (IN, source_module='ABONNEMENT')
+```
+
+**Règle absolue** : le passé financier ne doit jamais être modifié par une modification du catalogue ou d'un tarif actuel. Chaque couche porte son propre montant figé au moment de sa création.
+
+### abonnement
+
+Offre commerciale proposée par PEJAA. `montant` = prix catalogue **actuel**, évolutif.
+Sa modification ne rétroagit JAMAIS sur les souscriptions, échéances ou paiements existants.
+
+Contrainte de suppression physique : interdite si au moins une `souscription_abonnement` existe (même annulée).
+
+| Colonne | Type | Null | Description |
+|---------|------|------|-------------|
+| id_abonnement | Int | PK | |
+| tenant_id | Int | NO | |
+| nom | String | NO | Libellé de l'offre |
+| description | String? | YES | Description optionnelle |
+| montant | Decimal(10,2) | NO | Prix catalogue actuel (évolutif) |
+| periodicite | String | NO | mensuel / trimestriel / annuel / ponctuel |
+| statut | String | NO | ACTIVE / INACTIVE / ARCHIVED (défaut: ACTIVE) |
+| created_by | Int? | YES | |
+| modified_by | Int? | YES | |
+| modified_at | DateTime? | YES | |
+
+### souscription_abonnement
+
+Relation commerciale entre un collaborateur et une offre. Peut représenter une souscription **actuellement active, suspendue, terminée ou annulée** — le nom ne présuppose pas l'état.
+
+`montant` = tarif **actuellement applicable** à ce collaborateur — peut différer du catalogue.
+C'est ce montant qui sert de base lors de la prochaine génération d'échéance.
+Les montants historiques sont portés par `echeance_abonnement.montant`.
+
+Une migration commerciale (changement d'offre ou de tarif structurant) se représente comme :
+ancienne souscription `date_fin` → nouvelle souscription. Ne jamais réécrire `id_abonnement` ou `montant` sur une souscription existante.
+
+| Colonne | Type | Null | Description |
+|---------|------|------|-------------|
+| id_souscription_abonnement | Int | PK | |
+| tenant_id | Int | NO | |
+| id_abonnement | Int | NO | FK → abonnement |
+| id_collaborateur | Int | NO | FK → collaborateur |
+| montant | Decimal(10,2) | NO | Tarif actuellement applicable (peut différer du catalogue) |
+| renouvellement_auto | Boolean | NO | true par défaut |
+| date_debut | DateTime | NO | |
+| date_fin | DateTime? | YES | NULL = pas de date limite |
+| statut | String | NO | ACTIVE / SUSPENDUE / TERMINEE / ANNULEE (défaut: ACTIVE) |
+| canceled_at | DateTime? | YES | Renseigner pour annuler (pas de suppression physique) |
+| canceled_by | Int? | YES | |
+| created_by | Int? | YES | |
+| modified_by | Int? | YES | |
+| modified_at | DateTime? | YES | |
+
+### echeance_abonnement
+
+Obligation financière concrète pour une période donnée.
+`montant` = **snapshot figé** du montant dû à la génération.
+Une modification ultérieure de `souscription_abonnement.montant` ou `abonnement.montant`
+ne modifie **JAMAIS** une échéance déjà créée.
+
+| Colonne | Type | Null | Description |
+|---------|------|------|-------------|
+| id_echeance_abonnement | Int | PK | |
+| tenant_id | Int | NO | |
+| id_souscription_abonnement | Int | NO | FK → souscription_abonnement |
+| montant | Decimal(10,2) | NO | Snapshot figé du montant dû — jamais recalculé |
+| periode_debut | DateTime | NO | Début de la période couverte |
+| periode_fin | DateTime | NO | Fin de la période couverte |
+| statut | String | NO | en_attente / partiellement_payee / payee / annulee |
+| canceled_at | DateTime? | YES | Renseigner pour annuler (pas de suppression physique) |
+| canceled_by | Int? | YES | |
+| created_by | Int? | YES | |
+| modified_by | Int? | YES | |
+| modified_at | DateTime? | YES | |
+
+### paiement_abonnement
+
+Encaissement réel pour une échéance.
+`montant` est **indépendant** de `echeance_abonnement.montant` : partiel, multiple, supérieur ou en régularisation sont tous valides.
+Un paiement ne peut jamais être rattaché directement à `abonnement` ou `souscription_abonnement` — il appartient obligatoirement à une `echeance_abonnement`.
+
+Création atomique d'une `TransactionFinanciere(IN, source_module='ABONNEMENT', source_id=id_paiement_abonnement)` à chaque enregistrement confirmé.
+
+| Colonne | Type | Null | Description |
+|---------|------|------|-------------|
+| id_paiement_abonnement | Int | PK | |
+| tenant_id | Int | NO | |
+| id_echeance_abonnement | Int | NO | FK → echeance_abonnement |
+| montant | Decimal(10,2) | NO | Montant réellement encaissé (indépendant de l'échéance) |
+| date_paiement | DateTime | NO | |
+| canceled_at | DateTime? | YES | Renseigner pour annuler (pas de suppression physique) |
+| canceled_by | Int? | YES | |
+| created_by | Int? | YES | |
+| modified_by | Int? | YES | |
+| modified_at | DateTime? | YES | |
+
+> `abonnement.montant` → prix catalogue (évolutif). `souscription_abonnement.montant` → tarif applicable actuel. `echeance_abonnement.montant` → dû figé à la période. `paiement_abonnement.montant` → encaissé réel. Ces quatre valeurs sont strictement indépendantes.
+
 
 ## LEGACY (utiliser stock_mouvement à la place)
 

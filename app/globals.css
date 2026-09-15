@@ -164,3 +164,7 @@
 .dark ::-webkit-scrollbar-thumb {
   background: #475569;
 }
+
+/* ── Utilitaire : masquer la scrollbar (scroll fonctionnel mais invisible) ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

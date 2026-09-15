@@ -1,0 +1,2348 @@
+════════════════════════════════════════════════════════
+PEJAA SERVER SESSION
+Démarré     : 2026-09-15 05:52:17.806
+Environnement : test
+════════════════════════════════════════════════════════
+
+[hors-req]     [DB] Abonnement.create
+     ✓ 404 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 121 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+
+[req_f2qeut] → POST /api/souscriptions-abonnements
+
+[req_f2qeut] ▸ Auth
+
+[hors-req]     [DB] FinancialCategory.findFirst
+     ✓ 27 ms
+[req_f2qeut]     [DB] Utilisateur.findUnique
+     ✓ 7 ms
+[req_f2qeut]     [DB] AccessDomain.findFirst
+     ✓ 10 ms
+[req_f2qeut]     [DB] UserAccessOverride.findUnique
+     ✓ 4 ms
+[req_f2qeut]     [DB] Role.findFirst
+     ✓ 5 ms
+[req_f2qeut]     [DB] RoleAccessMatrix.findUnique
+     ✓ 4 ms
+[req_f2qeut]     [DB] Abonnement.findFirst
+     ✓ 3 ms
+[req_f2qeut]     [DB] Collaborateur.findFirst
+     ✓ 4 ms
+[req_f2qeut]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 12 ms
+
+[req_33eret] → POST /api/echeances-abonnements
+
+[req_33eret] ▸ Auth
+
+[req_f2qeut]     [DB] SouscriptionAbonnement.create
+     ✓ 19 ms
+[req_33eret]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_33eret]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_33eret]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_33eret]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_33eret]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_33eret]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 2 ms
+
+[req_dn0fvw] → POST /api/echeances-abonnements
+
+[req_dn0fvw] ▸ Auth
+
+[req_33eret]     [DB] EcheanceAbonnement.create
+     ✓ 147 ms
+[req_dn0fvw]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_dn0fvw]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_dn0fvw]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_dn0fvw]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_dn0fvw]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_dn0fvw]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_nhygiq] → POST /api/echeances-abonnements
+
+[req_nhygiq] ▸ Auth
+
+[req_dn0fvw]     [DB] EcheanceAbonnement.create
+     ✓ 125 ms
+[req_nhygiq]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_nhygiq]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_nhygiq]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_nhygiq]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_nhygiq]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_nhygiq]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_rmj1ob] → POST /api/echeances-abonnements
+
+[req_rmj1ob] ▸ Auth
+
+[req_nhygiq]     [DB] EcheanceAbonnement.create
+     ✓ 75 ms
+
+⚠ APPELS RÉPÉTITIFS — Utilisateur.findUnique — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 1 appel
+      ↳ Auth
+      (req_f2qeut)
+   POST /api/echeances-abonnements → 4 appels
+      ↳ Auth
+      (req_33eret, req_dn0fvw, req_nhygiq, req_rmj1ob)
+
+[req_rmj1ob]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — AccessDomain.findFirst — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 1 appel
+      ↳ Auth
+      (req_f2qeut)
+   POST /api/echeances-abonnements → 4 appels
+      ↳ Auth
+      (req_33eret, req_dn0fvw, req_nhygiq, req_rmj1ob)
+
+[req_rmj1ob]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — UserAccessOverride.findUnique — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 1 appel
+      ↳ Auth
+      (req_f2qeut)
+   POST /api/echeances-abonnements → 4 appels
+      ↳ Auth
+      (req_33eret, req_dn0fvw, req_nhygiq, req_rmj1ob)
+
+[req_rmj1ob]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — Role.findFirst — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 1 appel
+      ↳ Auth
+      (req_f2qeut)
+   POST /api/echeances-abonnements → 4 appels
+      ↳ Auth
+      (req_33eret, req_dn0fvw, req_nhygiq, req_rmj1ob)
+
+[req_rmj1ob]     [DB] Role.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — RoleAccessMatrix.findUnique — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 1 appel
+      ↳ Auth
+      (req_f2qeut)
+   POST /api/echeances-abonnements → 4 appels
+      ↳ Auth
+      (req_33eret, req_dn0fvw, req_nhygiq, req_rmj1ob)
+
+[req_rmj1ob]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.findFirst — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 1 appel
+      (req_f2qeut)
+   POST /api/echeances-abonnements → 4 appels
+      (req_33eret, req_dn0fvw, req_nhygiq, req_rmj1ob)
+
+[req_rmj1ob]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+⚠ REQUÊTES HTTP RÉPÉTÉES — POST /api/echeances-abonnements — 5 appels en 2.0 s
+   req_33eret  req_dn0fvw  req_nhygiq  req_rmj1ob  req_9i69yz
+
+
+[req_9i69yz] → POST /api/echeances-abonnements
+
+[req_9i69yz] ▸ Auth
+
+[req_rmj1ob]     [DB] EcheanceAbonnement.create
+     ✓ 54 ms
+[req_9i69yz]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_9i69yz]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_9i69yz]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_9i69yz]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_9i69yz]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_9i69yz]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_5te05m] → POST /api/echeances-abonnements
+
+[req_5te05m] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — EcheanceAbonnement.create — 5 appels en 2.0 s
+
+   POST /api/echeances-abonnements → 5 appels
+      (req_33eret, req_dn0fvw, req_nhygiq, req_rmj1ob, req_9i69yz)
+
+[req_9i69yz]     [DB] EcheanceAbonnement.create
+     ✓ 7 ms
+[req_5te05m]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_5te05m]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_5te05m]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_5te05m]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_5te05m]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_5te05m]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_fqrlvw] → POST /api/paiements-abonnements
+
+[req_fqrlvw] ▸ Auth
+
+[req_5te05m]     [DB] EcheanceAbonnement.create
+     ✓ 4 ms
+[req_fqrlvw]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_fqrlvw]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_fqrlvw]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_fqrlvw]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_fqrlvw]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_fqrlvw]     [DB] EcheanceAbonnement.findMany
+     ✓ 67 ms · 1 ligne
+[req_fqrlvw]     [DB] FinancialCategory.findFirst
+     ✓ 29 ms
+[req_fqrlvw]     [DB] TransactionFinanciere.create
+     ✓ 5 ms
+[req_fqrlvw]     [DB] PaiementAbonnement.create
+     ✓ 8 ms
+[req_fqrlvw]     [DB] EcheanceAbonnement.update
+     ✓ 4 ms
+[hors-req]     [DB] TransactionFinanciere.findUnique
+     ✓ 2 ms
+
+[req_0hn5wg] → POST /api/paiements-abonnements
+
+[req_0hn5wg] ▸ Auth
+
+[hors-req]     [DB] EcheanceAbonnement.findUnique
+     ✓ 2 ms
+[req_0hn5wg]     [DB] Utilisateur.findUnique
+     ✓ 4 ms
+[req_0hn5wg]     [DB] AccessDomain.findFirst
+     ✓ 3 ms
+[req_0hn5wg]     [DB] UserAccessOverride.findUnique
+     ✓ 2 ms
+[req_0hn5wg]     [DB] Role.findFirst
+     ✓ 3 ms
+[req_0hn5wg]     [DB] RoleAccessMatrix.findUnique
+     ✓ 3 ms
+[req_0hn5wg]     [DB] EcheanceAbonnement.findMany
+     ✓ 6 ms · 1 ligne
+[req_0hn5wg]     [DB] FinancialCategory.findFirst
+     ✓ 1 ms
+[req_0hn5wg]     [DB] TransactionFinanciere.create
+     ✓ 2 ms
+[req_0hn5wg]     [DB] PaiementAbonnement.create
+     ✓ 2 ms
+[req_0hn5wg]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+
+[req_3sszbo] → POST /api/paiements-abonnements
+
+[req_3sszbo] ▸ Auth
+
+[hors-req]     [DB] EcheanceAbonnement.findUnique
+     ✓ 1 ms
+[req_3sszbo]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_3sszbo]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_3sszbo]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_3sszbo]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_3sszbo]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_3sszbo]     [DB] EcheanceAbonnement.findMany
+     ✓ 2 ms · 1 ligne
+[req_3sszbo]     [DB] FinancialCategory.findFirst
+     ✓ 1 ms
+[req_3sszbo]     [DB] TransactionFinanciere.create
+     ✓ 2 ms
+[req_3sszbo]     [DB] PaiementAbonnement.create
+     ✓ 2 ms
+[req_3sszbo]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+[hors-req]     [DB] PaiementAbonnement.findMany
+     ✓ 2 ms · 2 lignes
+
+[req_lfhb1a] → POST /api/paiements-abonnements
+
+[req_lfhb1a] ▸ Auth
+
+[hors-req]     [DB] EcheanceAbonnement.findUnique
+     ✓ 1 ms
+[req_lfhb1a]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_lfhb1a]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_lfhb1a]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_lfhb1a]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_lfhb1a]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_lfhb1a]     [DB] EcheanceAbonnement.findMany
+     ✓ 2 ms · 4 lignes
+
+⚠ APPELS RÉPÉTITIFS — FinancialCategory.findFirst — 4 appels en 2.0 s
+
+   POST /api/paiements-abonnements → 4 appels
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a)
+
+[req_lfhb1a]     [DB] FinancialCategory.findFirst
+     ✓ 1 ms
+[req_lfhb1a]     [DB] TransactionFinanciere.create
+     ✓ 3 ms
+[req_lfhb1a]     [DB] PaiementAbonnement.create
+     ✓ 3 ms
+
+⚠ APPELS RÉPÉTITIFS — PaiementAbonnement.create — 5 appels en 2.0 s
+
+   POST /api/paiements-abonnements → 5 appels
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a)
+
+[req_lfhb1a]     [DB] PaiementAbonnement.create
+     ✓ 2 ms
+[req_lfhb1a]     [DB] PaiementAbonnement.create
+     ✓ 2 ms
+[req_lfhb1a]     [DB] PaiementAbonnement.create
+     ✓ 1 ms
+[req_lfhb1a]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — EcheanceAbonnement.update — 5 appels en 2.0 s
+
+   POST /api/paiements-abonnements → 5 appels
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a)
+
+[req_lfhb1a]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+[req_lfhb1a]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+[req_lfhb1a]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+[hors-req]     [DB] PaiementAbonnement.findMany
+     ✓ 1 ms · 4 lignes
+
+[req_hqf7nx] → POST /api/echeances-abonnements
+
+[req_hqf7nx] ▸ Auth
+
+[hors-req]     [DB] TransactionFinanciere.findUnique
+     ✓ 1 ms
+[req_hqf7nx]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_hqf7nx]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_hqf7nx]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_hqf7nx]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_hqf7nx]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_hqf7nx]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+⚠ REQUÊTES HTTP RÉPÉTÉES — POST /api/paiements-abonnements — 5 appels en 2.0 s
+   req_fqrlvw  req_0hn5wg  req_3sszbo  req_lfhb1a  req_a3z033
+
+
+[req_a3z033] → POST /api/paiements-abonnements
+
+[req_a3z033] ▸ Auth
+
+[req_hqf7nx]     [DB] EcheanceAbonnement.create
+     ✓ 73 ms
+[req_a3z033]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_a3z033]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_a3z033]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_a3z033]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_a3z033]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+[req_cp28m3] → POST /api/echeances-abonnements
+
+[req_cp28m3] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — EcheanceAbonnement.findMany — 5 appels en 2.0 s
+
+   POST /api/paiements-abonnements → 5 appels
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a, req_a3z033)
+
+[req_a3z033]     [DB] EcheanceAbonnement.findMany
+     ✓ 2 ms · 1 ligne
+[req_cp28m3]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_cp28m3]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_cp28m3]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_cp28m3]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_cp28m3]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_cp28m3]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_pebf7w] → POST /api/paiements-abonnements
+
+[req_pebf7w] ▸ Auth
+
+[req_cp28m3]     [DB] EcheanceAbonnement.create
+     ✓ 122 ms
+[req_pebf7w]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_pebf7w]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_pebf7w]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_pebf7w]     [DB] Role.findFirst
+     ✓ 1 ms
+
+[req_noocqe] → POST /api/echeances-abonnements
+
+[req_noocqe] ▸ Auth
+
+[req_pebf7w]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_noocqe]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_noocqe]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_noocqe]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_noocqe]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_noocqe]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_noocqe]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_47h5a6] → POST /api/paiements-abonnements
+
+[req_47h5a6] ▸ Auth
+
+[req_noocqe]     [DB] EcheanceAbonnement.create
+     ✓ 101 ms
+[req_47h5a6]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_47h5a6]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_47h5a6]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_47h5a6]     [DB] Role.findFirst
+     ✓ 1 ms
+
+[req_ocfn9w] → POST /api/paiements-abonnements
+
+[req_ocfn9w] ▸ Auth
+
+[req_47h5a6]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_ocfn9w]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_ocfn9w]     [DB] AccessDomain.findFirst
+     ✓ 3 ms
+[req_ocfn9w]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_ocfn9w]     [DB] Role.findFirst
+     ✓ 2 ms
+[req_ocfn9w]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+[req_haab7g] → POST /api/echeances-abonnements
+
+[req_haab7g] ▸ Auth
+
+[req_ocfn9w]     [DB] EcheanceAbonnement.findMany
+     ✓ 2 ms · 1 ligne
+[req_haab7g]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_haab7g]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_haab7g]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_haab7g]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_haab7g]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_haab7g]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_4jp4bb] → POST /api/paiements-abonnements
+
+[req_4jp4bb] ▸ Auth
+
+[req_haab7g]     [DB] EcheanceAbonnement.create
+     ✓ 51 ms
+[req_4jp4bb]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_4jp4bb]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_4jp4bb]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_4jp4bb]     [DB] Role.findFirst
+     ✓ 1 ms
+
+[req_ooi7c2] → POST /api/echeances-abonnements
+
+[req_ooi7c2] ▸ Auth
+
+[req_4jp4bb]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_ooi7c2]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_ooi7c2]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_ooi7c2]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_ooi7c2]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_ooi7c2]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_ooi7c2]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_g01u54] → POST /api/echeances-abonnements
+
+[req_g01u54] ▸ Auth
+
+[req_ooi7c2]     [DB] EcheanceAbonnement.create
+     ✓ 98 ms
+[req_g01u54]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_g01u54]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_g01u54]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_g01u54]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_g01u54]     [DB] RoleAccessMatrix.findUnique
+     ✓ 2 ms
+[req_g01u54]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_g01u54]     [DB] EcheanceAbonnement.create
+     ✓ 103 ms
+
+[req_rpql00] → POST /api/paiements-abonnements
+
+[req_rpql00] ▸ Auth
+
+[hors-req]     [DB] TransactionFinanciere.count
+     ✓ 5 ms
+[req_rpql00]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_rpql00]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_rpql00]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_rpql00]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_rpql00]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_rpql00]     [DB] EcheanceAbonnement.findMany
+     ✓ 2 ms · 2 lignes
+[hors-req]     [DB] TransactionFinanciere.count
+     ✓ 1 ms
+[hors-req]     [DB] PaiementAbonnement.count
+     ✓ 2 ms
+[hors-req]     [DB] SouscriptionAbonnement.findMany
+     ✓ 2 ms · 1 ligne
+[hors-req]     [DB] EcheanceAbonnement.findMany
+     ✓ 1 ms · 12 lignes
+[hors-req]     [DB] PaiementAbonnement.deleteMany
+     ✓ 63 ms
+[hors-req]     [DB] EcheanceAbonnement.deleteMany
+     ✓ 2 ms
+[hors-req]     [DB] TransactionFinanciere.deleteMany
+     ✓ 2 ms
+[hors-req]     [DB] SouscriptionAbonnement.deleteMany
+     ✓ 2 ms
+[hors-req]     [DB] Abonnement.deleteMany
+     ✓ 3 ms
+[hors-req]     [DB] Collaborateur.deleteMany
+     ✓ 4 ms
+[hors-req]     [DB] Abonnement.create
+     ✓ 2 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+
+[req_mmcv0l] → POST /api/souscriptions-abonnements
+
+[req_mmcv0l] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+[req_mmcv0l]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_mmcv0l]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_mmcv0l]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_mmcv0l]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_mmcv0l]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_mmcv0l]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_mmcv0l]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_mmcv0l]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_c191z4] → POST /api/echeances-abonnements
+
+[req_c191z4] ▸ Auth
+
+[req_mmcv0l]     [DB] SouscriptionAbonnement.create
+     ✓ 77 ms
+[req_c191z4]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_c191z4]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_c191z4]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_c191z4]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_c191z4]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_c191z4]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_pmiv37] → POST /api/echeances-abonnements
+
+[req_pmiv37] ▸ Auth
+
+[req_c191z4]     [DB] EcheanceAbonnement.create
+     ✓ 78 ms
+[req_pmiv37]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_pmiv37]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_pmiv37]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_pmiv37]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_pmiv37]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_pmiv37]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_2v2147] → POST /api/paiements-abonnements
+
+[req_2v2147] ▸ Auth
+
+[req_pmiv37]     [DB] EcheanceAbonnement.create
+     ✓ 30 ms
+[req_2v2147]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_2v2147]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_2v2147]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_2v2147]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_2v2147]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_2v2147]     [DB] EcheanceAbonnement.findMany
+     ✓ 2 ms · 2 lignes
+[req_2v2147]     [DB] FinancialCategory.findFirst
+     ✓ 2 ms
+
+⚠ APPELS RÉPÉTITIFS — TransactionFinanciere.create — 5 appels en 2.0 s
+
+   POST /api/paiements-abonnements → 5 appels
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a, req_2v2147)
+
+[req_2v2147]     [DB] TransactionFinanciere.create
+     ✓ 2 ms
+[req_2v2147]     [DB] PaiementAbonnement.create
+     ✓ 1 ms
+[req_2v2147]     [DB] PaiementAbonnement.create
+     ✓ 1 ms
+[req_2v2147]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+[req_2v2147]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+
+[req_czwykc] → POST /api/paiements-abonnements/groupes/67/annuler
+
+[req_czwykc] ▸ Auth
+
+[hors-req]     [DB] TransactionFinanciere.findUnique
+     ✓ 1 ms
+[req_czwykc]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_czwykc]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_czwykc]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_czwykc]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_czwykc]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_czwykc]     [DB] TransactionFinanciere.findFirst
+     ✓ 2 ms
+[req_czwykc]     [DB] PaiementAbonnement.findMany
+     ✓ 4 ms · 2 lignes
+[req_czwykc]     [DB] FinancialCategory.findFirst
+     ✓ 1 ms
+[req_czwykc]     [DB] PaiementAbonnement.updateMany
+     ✓ 3 ms
+[req_czwykc]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+[req_czwykc]     [DB] EcheanceAbonnement.update
+     ✓ 2 ms
+[req_czwykc]     [DB] TransactionFinanciere.create
+     ✓ 3 ms
+[hors-req]     [DB] PaiementAbonnement.findMany
+     ✓ 1 ms · 2 lignes
+[hors-req]     [DB] TransactionFinanciere.findUnique
+     ✓ 1 ms
+[hors-req]     [DB] TransactionFinanciere.findFirst
+     ✓ 2 ms
+[hors-req]     [DB] EcheanceAbonnement.findUnique
+     ✓ 1 ms
+
+[req_0kjaop] → POST /api/paiements-abonnements/groupes/67/annuler
+
+[req_0kjaop] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — EcheanceAbonnement.findUnique — 0 appels en 2.0 s
+
+
+[hors-req]     [DB] EcheanceAbonnement.findUnique
+     ✓ 1 ms
+[req_0kjaop]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_0kjaop]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_0kjaop]     [DB] UserAccessOverride.findUnique
+     ✓ 3 ms
+[req_0kjaop]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_0kjaop]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_0kjaop]     [DB] TransactionFinanciere.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — PaiementAbonnement.findMany — 2 appels en 2.0 s
+
+   POST /api/paiements-abonnements/groupes/67/annuler → 2 appels
+      (req_czwykc, req_0kjaop)
+
+[req_0kjaop]     [DB] PaiementAbonnement.findMany
+     ✓ 3 ms · 2 lignes
+[hors-req]     [DB] SouscriptionAbonnement.findMany
+     ✓ 1 ms · 1 ligne
+[hors-req]     [DB] EcheanceAbonnement.findMany
+     ✓ 1 ms · 2 lignes
+[hors-req]     [DB] PaiementAbonnement.deleteMany
+     ✓ 55 ms
+[hors-req]     [DB] EcheanceAbonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] TransactionFinanciere.deleteMany
+     ✓ 2 ms
+[hors-req]     [DB] SouscriptionAbonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Abonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Collaborateur.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Abonnement.create
+     ✓ 1 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+
+[req_dbg8jd] → POST /api/souscriptions-abonnements
+
+[req_dbg8jd] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — Collaborateur.create — 0 appels en 2.0 s
+
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+[req_dbg8jd]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_dbg8jd]     [DB] AccessDomain.findFirst
+     ✓ 4 ms
+[req_dbg8jd]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_dbg8jd]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_dbg8jd]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_dbg8jd]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_dbg8jd]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_dbg8jd]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_hwkt55] → PATCH /api/souscriptions-abonnements/54/statut
+
+[req_hwkt55] ▸ Auth
+
+[req_dbg8jd]     [DB] SouscriptionAbonnement.create
+     ✓ 65 ms
+[req_hwkt55]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_hwkt55]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_hwkt55]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_hwkt55]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_hwkt55]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_hwkt55]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_hwkt55]     [DB] SouscriptionAbonnement.update
+     ✓ 72 ms
+[hors-req]     [DB] SouscriptionAbonnement.findUnique
+     ✓ 2 ms
+
+[req_k2oizy] → POST /api/souscriptions-abonnements
+
+[req_k2oizy] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+[req_k2oizy]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_k2oizy]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_k2oizy]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_k2oizy]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_k2oizy]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_k2oizy]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_k2oizy]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_k2oizy]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_e0m983] → PATCH /api/souscriptions-abonnements/55/statut
+
+[req_e0m983] ▸ Auth
+
+[req_k2oizy]     [DB] SouscriptionAbonnement.create
+     ✓ 71 ms
+[req_e0m983]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_e0m983]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_e0m983]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_e0m983]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_e0m983]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_e0m983]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_z7oprj] → PATCH /api/souscriptions-abonnements/55/statut
+
+[req_z7oprj] ▸ Auth
+
+[req_e0m983]     [DB] SouscriptionAbonnement.update
+     ✓ 86 ms
+
+⚠ APPELS RÉPÉTITIFS — Utilisateur.findUnique — 29 appels en 2.0 s
+
+   POST /api/echeances-abonnements → 10 appels
+      ↳ Auth
+      (req_9i69yz, req_5te05m, req_hqf7nx, req_cp28m3, req_noocqe, req_haab7g, req_ooi7c2, req_g01u54, req_c191z4, req_pmiv37)
+   POST /api/paiements-abonnements → 11 appels
+      ↳ Auth
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a, req_a3z033, req_pebf7w, req_47h5a6, req_ocfn9w, req_4jp4bb, req_rpql00, req_2v2147)
+   POST /api/souscriptions-abonnements → 3 appels
+      ↳ Auth
+      (req_mmcv0l, req_dbg8jd, req_k2oizy)
+   POST /api/paiements-abonnements/groupes/67/annuler → 2 appels
+      ↳ Auth
+      (req_czwykc, req_0kjaop)
+   PATCH /api/souscriptions-abonnements/54/statut → 1 appel
+      ↳ Auth
+      (req_hwkt55)
+   PATCH /api/souscriptions-abonnements/55/statut → 2 appels
+      ↳ Auth
+      (req_e0m983, req_z7oprj)
+
+[req_z7oprj]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — AccessDomain.findFirst — 29 appels en 2.0 s
+
+   POST /api/echeances-abonnements → 10 appels
+      ↳ Auth
+      (req_9i69yz, req_5te05m, req_hqf7nx, req_cp28m3, req_noocqe, req_haab7g, req_ooi7c2, req_g01u54, req_c191z4, req_pmiv37)
+   POST /api/paiements-abonnements → 11 appels
+      ↳ Auth
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a, req_a3z033, req_pebf7w, req_47h5a6, req_ocfn9w, req_4jp4bb, req_rpql00, req_2v2147)
+   POST /api/souscriptions-abonnements → 3 appels
+      ↳ Auth
+      (req_mmcv0l, req_dbg8jd, req_k2oizy)
+   POST /api/paiements-abonnements/groupes/67/annuler → 2 appels
+      ↳ Auth
+      (req_czwykc, req_0kjaop)
+   PATCH /api/souscriptions-abonnements/54/statut → 1 appel
+      ↳ Auth
+      (req_hwkt55)
+   PATCH /api/souscriptions-abonnements/55/statut → 2 appels
+      ↳ Auth
+      (req_e0m983, req_z7oprj)
+
+[req_z7oprj]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — UserAccessOverride.findUnique — 29 appels en 2.0 s
+
+   POST /api/echeances-abonnements → 10 appels
+      ↳ Auth
+      (req_9i69yz, req_5te05m, req_hqf7nx, req_cp28m3, req_noocqe, req_haab7g, req_ooi7c2, req_g01u54, req_c191z4, req_pmiv37)
+   POST /api/paiements-abonnements → 11 appels
+      ↳ Auth
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a, req_a3z033, req_pebf7w, req_47h5a6, req_ocfn9w, req_4jp4bb, req_rpql00, req_2v2147)
+   POST /api/souscriptions-abonnements → 3 appels
+      ↳ Auth
+      (req_mmcv0l, req_dbg8jd, req_k2oizy)
+   POST /api/paiements-abonnements/groupes/67/annuler → 2 appels
+      ↳ Auth
+      (req_czwykc, req_0kjaop)
+   PATCH /api/souscriptions-abonnements/54/statut → 1 appel
+      ↳ Auth
+      (req_hwkt55)
+   PATCH /api/souscriptions-abonnements/55/statut → 2 appels
+      ↳ Auth
+      (req_e0m983, req_z7oprj)
+
+[req_z7oprj]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — Role.findFirst — 29 appels en 2.0 s
+
+   POST /api/echeances-abonnements → 10 appels
+      ↳ Auth
+      (req_9i69yz, req_5te05m, req_hqf7nx, req_cp28m3, req_noocqe, req_haab7g, req_ooi7c2, req_g01u54, req_c191z4, req_pmiv37)
+   POST /api/paiements-abonnements → 11 appels
+      ↳ Auth
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a, req_a3z033, req_pebf7w, req_47h5a6, req_ocfn9w, req_4jp4bb, req_rpql00, req_2v2147)
+   POST /api/souscriptions-abonnements → 3 appels
+      ↳ Auth
+      (req_mmcv0l, req_dbg8jd, req_k2oizy)
+   POST /api/paiements-abonnements/groupes/67/annuler → 2 appels
+      ↳ Auth
+      (req_czwykc, req_0kjaop)
+   PATCH /api/souscriptions-abonnements/54/statut → 1 appel
+      ↳ Auth
+      (req_hwkt55)
+   PATCH /api/souscriptions-abonnements/55/statut → 2 appels
+      ↳ Auth
+      (req_e0m983, req_z7oprj)
+
+[req_z7oprj]     [DB] Role.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — RoleAccessMatrix.findUnique — 29 appels en 2.0 s
+
+   POST /api/echeances-abonnements → 10 appels
+      ↳ Auth
+      (req_9i69yz, req_5te05m, req_hqf7nx, req_cp28m3, req_noocqe, req_haab7g, req_ooi7c2, req_g01u54, req_c191z4, req_pmiv37)
+   POST /api/paiements-abonnements → 11 appels
+      ↳ Auth
+      (req_fqrlvw, req_0hn5wg, req_3sszbo, req_lfhb1a, req_a3z033, req_pebf7w, req_47h5a6, req_ocfn9w, req_4jp4bb, req_rpql00, req_2v2147)
+   POST /api/souscriptions-abonnements → 3 appels
+      ↳ Auth
+      (req_mmcv0l, req_dbg8jd, req_k2oizy)
+   POST /api/paiements-abonnements/groupes/67/annuler → 2 appels
+      ↳ Auth
+      (req_czwykc, req_0kjaop)
+   PATCH /api/souscriptions-abonnements/54/statut → 1 appel
+      ↳ Auth
+      (req_hwkt55)
+   PATCH /api/souscriptions-abonnements/55/statut → 2 appels
+      ↳ Auth
+      (req_e0m983, req_z7oprj)
+
+[req_z7oprj]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.findFirst — 16 appels en 2.0 s
+
+   POST /api/echeances-abonnements → 10 appels
+      (req_9i69yz, req_5te05m, req_hqf7nx, req_cp28m3, req_noocqe, req_haab7g, req_ooi7c2, req_g01u54, req_c191z4, req_pmiv37)
+   POST /api/souscriptions-abonnements → 3 appels
+      (req_mmcv0l, req_dbg8jd, req_k2oizy)
+   PATCH /api/souscriptions-abonnements/54/statut → 1 appel
+      (req_hwkt55)
+   PATCH /api/souscriptions-abonnements/55/statut → 2 appels
+      (req_e0m983, req_z7oprj)
+
+[req_z7oprj]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_z7oprj]     [DB] SouscriptionAbonnement.update
+     ✓ 122 ms
+[hors-req]     [DB] SouscriptionAbonnement.findUnique
+     ✓ 1 ms
+
+[req_ny8sn0] → POST /api/souscriptions-abonnements
+
+[req_ny8sn0] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+[req_ny8sn0]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_ny8sn0]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_ny8sn0]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_ny8sn0]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_ny8sn0]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_ny8sn0]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_ny8sn0]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_ny8sn0]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_b35ojg] → PATCH /api/souscriptions-abonnements/56/statut
+
+[req_b35ojg] ▸ Auth
+
+[req_ny8sn0]     [DB] SouscriptionAbonnement.create
+     ✓ 75 ms
+[req_b35ojg]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_b35ojg]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_b35ojg]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_b35ojg]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_b35ojg]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_b35ojg]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_b35ojg]     [DB] SouscriptionAbonnement.update
+     ✓ 76 ms
+[hors-req]     [DB] SouscriptionAbonnement.findUnique
+     ✓ 1 ms
+
+⚠ REQUÊTES HTTP RÉPÉTÉES — POST /api/souscriptions-abonnements — 5 appels en 2.0 s
+   req_mmcv0l  req_dbg8jd  req_k2oizy  req_ny8sn0  req_mbyjik
+
+
+[req_mbyjik] → POST /api/souscriptions-abonnements
+
+[req_mbyjik] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+[req_mbyjik]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_mbyjik]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_mbyjik]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_mbyjik]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_mbyjik]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — Abonnement.findFirst — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 5 appels
+      (req_mmcv0l, req_dbg8jd, req_k2oizy, req_ny8sn0, req_mbyjik)
+
+[req_mbyjik]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — Collaborateur.findFirst — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 5 appels
+      (req_mmcv0l, req_dbg8jd, req_k2oizy, req_ny8sn0, req_mbyjik)
+
+[req_mbyjik]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_mbyjik]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_1d4fp7] → PATCH /api/souscriptions-abonnements/57/statut
+
+[req_1d4fp7] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.create — 5 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 5 appels
+      (req_mmcv0l, req_dbg8jd, req_k2oizy, req_ny8sn0, req_mbyjik)
+
+[req_mbyjik]     [DB] SouscriptionAbonnement.create
+     ✓ 74 ms
+[req_1d4fp7]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_1d4fp7]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_1d4fp7]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_1d4fp7]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_1d4fp7]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_1d4fp7]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_lsu7ix] → PATCH /api/souscriptions-abonnements/57/statut
+
+[req_lsu7ix] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.update — 5 appels en 2.0 s
+
+   PATCH /api/souscriptions-abonnements/54/statut → 1 appel
+      (req_hwkt55)
+   PATCH /api/souscriptions-abonnements/55/statut → 2 appels
+      (req_e0m983, req_z7oprj)
+   PATCH /api/souscriptions-abonnements/56/statut → 1 appel
+      (req_b35ojg)
+   PATCH /api/souscriptions-abonnements/57/statut → 1 appel
+      (req_1d4fp7)
+
+[req_1d4fp7]     [DB] SouscriptionAbonnement.update
+     ✓ 77 ms
+[req_lsu7ix]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_lsu7ix]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_lsu7ix]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_lsu7ix]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_lsu7ix]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_lsu7ix]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_o4mpxf] → POST /api/souscriptions-abonnements
+
+[req_o4mpxf] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 79 ms
+[req_o4mpxf]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_o4mpxf]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_o4mpxf]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_o4mpxf]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_o4mpxf]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_o4mpxf]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_o4mpxf]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_o4mpxf]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_mbxuxe] → PATCH /api/souscriptions-abonnements/58/statut
+
+[req_mbxuxe] ▸ Auth
+
+[req_o4mpxf]     [DB] SouscriptionAbonnement.create
+     ✓ 100 ms
+[req_mbxuxe]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_mbxuxe]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_mbxuxe]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_mbxuxe]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_mbxuxe]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_mbxuxe]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 2 ms
+[req_mbxuxe]     [DB] SouscriptionAbonnement.update
+     ✓ 86 ms
+[hors-req]     [DB] SouscriptionAbonnement.findUnique
+     ✓ 1 ms
+
+[req_rz2tv7] → POST /api/souscriptions-abonnements
+
+[req_rz2tv7] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 7 ms
+[req_rz2tv7]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_rz2tv7]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_rz2tv7]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_rz2tv7]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_rz2tv7]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_rz2tv7]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_rz2tv7]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_rz2tv7]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_sy078p] → PATCH /api/souscriptions-abonnements/59/statut
+
+[req_sy078p] ▸ Auth
+
+[req_rz2tv7]     [DB] SouscriptionAbonnement.create
+     ✓ 68 ms
+[req_sy078p]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_sy078p]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_sy078p]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_sy078p]     [DB] Role.findFirst
+     ✓ 2 ms
+[req_sy078p]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_sy078p]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_zoazsq] → PATCH /api/souscriptions-abonnements/59/statut
+
+[req_zoazsq] ▸ Auth
+
+[req_sy078p]     [DB] SouscriptionAbonnement.update
+     ✓ 166 ms
+[req_zoazsq]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_zoazsq]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_zoazsq]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_zoazsq]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_zoazsq]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+[req_rrm32k] → PATCH /api/souscriptions-abonnements/59/statut
+
+[req_rrm32k] ▸ Auth
+
+[req_zoazsq]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_rrm32k]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_rrm32k]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_rrm32k]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_rrm32k]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_rrm32k]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+[req_2c8pn0] → PATCH /api/souscriptions-abonnements/59/statut
+
+[req_2c8pn0] ▸ Auth
+
+[req_rrm32k]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_2c8pn0]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_2c8pn0]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_2c8pn0]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_2c8pn0]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_2c8pn0]     [DB] RoleAccessMatrix.findUnique
+     ✓ 2 ms
+[req_2c8pn0]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_yqjr98] → POST /api/souscriptions-abonnements
+
+[req_yqjr98] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 66 ms
+[req_yqjr98]     [DB] Utilisateur.findUnique
+     ✓ 3 ms
+[req_yqjr98]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_yqjr98]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_yqjr98]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_yqjr98]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_yqjr98]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_yqjr98]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_yqjr98]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_zq56g5] → PATCH /api/souscriptions-abonnements/60/statut
+
+[req_zq56g5] ▸ Auth
+
+[req_yqjr98]     [DB] SouscriptionAbonnement.create
+     ✓ 97 ms
+[req_zq56g5]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_zq56g5]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_zq56g5]     [DB] UserAccessOverride.findUnique
+     ✓ 2 ms
+[req_zq56g5]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_zq56g5]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_zq56g5]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_rvsfnm] → PATCH /api/souscriptions-abonnements/60/statut
+
+[req_rvsfnm] ▸ Auth
+
+[req_zq56g5]     [DB] SouscriptionAbonnement.update
+     ✓ 103 ms
+[req_rvsfnm]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_rvsfnm]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_rvsfnm]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_rvsfnm]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_rvsfnm]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_rvsfnm]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_rvsfnm]     [DB] SouscriptionAbonnement.update
+     ✓ 101 ms
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.findUnique — 0 appels en 2.0 s
+
+
+[hors-req]     [DB] SouscriptionAbonnement.findUnique
+     ✓ 3 ms
+
+[req_mr4f8k] → POST /api/souscriptions-abonnements
+
+[req_mr4f8k] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+[req_mr4f8k]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_mr4f8k]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_mr4f8k]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_mr4f8k]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_mr4f8k]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_mr4f8k]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_mr4f8k]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_mr4f8k]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_b8i9m9] → POST /api/echeances-abonnements
+
+[req_b8i9m9] ▸ Auth
+
+[req_mr4f8k]     [DB] SouscriptionAbonnement.create
+     ✓ 214 ms
+[req_b8i9m9]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_b8i9m9]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_b8i9m9]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_b8i9m9]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_b8i9m9]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_b8i9m9]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_uy707b] → PATCH /api/souscriptions-abonnements/61/tarif
+
+[req_uy707b] ▸ Auth
+
+[req_b8i9m9]     [DB] EcheanceAbonnement.create
+     ✓ 86 ms
+[req_uy707b]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_uy707b]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_uy707b]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_uy707b]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_uy707b]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_uy707b]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_uy707b]     [DB] SouscriptionAbonnement.update
+     ✓ 88 ms
+[hors-req]     [DB] SouscriptionAbonnement.findUnique
+     ✓ 1 ms
+[hors-req]     [DB] EcheanceAbonnement.findUnique
+     ✓ 1 ms
+
+[req_rnfr0p] → POST /api/souscriptions-abonnements
+
+[req_rnfr0p] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — Collaborateur.create — 0 appels en 2.0 s
+
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+[req_rnfr0p]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_rnfr0p]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_rnfr0p]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_rnfr0p]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_rnfr0p]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_rnfr0p]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_rnfr0p]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_rnfr0p]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_c0lfzs] → PATCH /api/souscriptions-abonnements/62/statut
+
+[req_c0lfzs] ▸ Auth
+
+[req_rnfr0p]     [DB] SouscriptionAbonnement.create
+     ✓ 153 ms
+
+⚠ APPELS RÉPÉTITIFS — Utilisateur.findUnique — 20 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      ↳ Auth
+      (req_ny8sn0, req_mbyjik, req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p)
+   PATCH /api/souscriptions-abonnements/56/statut → 1 appel
+      ↳ Auth
+      (req_b35ojg)
+   PATCH /api/souscriptions-abonnements/57/statut → 2 appels
+      ↳ Auth
+      (req_1d4fp7, req_lsu7ix)
+   PATCH /api/souscriptions-abonnements/58/statut → 1 appel
+      ↳ Auth
+      (req_mbxuxe)
+   PATCH /api/souscriptions-abonnements/59/statut → 4 appels
+      ↳ Auth
+      (req_sy078p, req_zoazsq, req_rrm32k, req_2c8pn0)
+   PATCH /api/souscriptions-abonnements/60/statut → 2 appels
+      ↳ Auth
+      (req_zq56g5, req_rvsfnm)
+   POST /api/echeances-abonnements → 1 appel
+      ↳ Auth
+      (req_b8i9m9)
+   PATCH /api/souscriptions-abonnements/61/tarif → 1 appel
+      ↳ Auth
+      (req_uy707b)
+   PATCH /api/souscriptions-abonnements/62/statut → 1 appel
+      ↳ Auth
+      (req_c0lfzs)
+
+[req_c0lfzs]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — AccessDomain.findFirst — 20 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      ↳ Auth
+      (req_ny8sn0, req_mbyjik, req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p)
+   PATCH /api/souscriptions-abonnements/56/statut → 1 appel
+      ↳ Auth
+      (req_b35ojg)
+   PATCH /api/souscriptions-abonnements/57/statut → 2 appels
+      ↳ Auth
+      (req_1d4fp7, req_lsu7ix)
+   PATCH /api/souscriptions-abonnements/58/statut → 1 appel
+      ↳ Auth
+      (req_mbxuxe)
+   PATCH /api/souscriptions-abonnements/59/statut → 4 appels
+      ↳ Auth
+      (req_sy078p, req_zoazsq, req_rrm32k, req_2c8pn0)
+   PATCH /api/souscriptions-abonnements/60/statut → 2 appels
+      ↳ Auth
+      (req_zq56g5, req_rvsfnm)
+   POST /api/echeances-abonnements → 1 appel
+      ↳ Auth
+      (req_b8i9m9)
+   PATCH /api/souscriptions-abonnements/61/tarif → 1 appel
+      ↳ Auth
+      (req_uy707b)
+   PATCH /api/souscriptions-abonnements/62/statut → 1 appel
+      ↳ Auth
+      (req_c0lfzs)
+
+[req_c0lfzs]     [DB] AccessDomain.findFirst
+     ✓ 2 ms
+
+⚠ APPELS RÉPÉTITIFS — UserAccessOverride.findUnique — 20 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      ↳ Auth
+      (req_ny8sn0, req_mbyjik, req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p)
+   PATCH /api/souscriptions-abonnements/56/statut → 1 appel
+      ↳ Auth
+      (req_b35ojg)
+   PATCH /api/souscriptions-abonnements/57/statut → 2 appels
+      ↳ Auth
+      (req_1d4fp7, req_lsu7ix)
+   PATCH /api/souscriptions-abonnements/58/statut → 1 appel
+      ↳ Auth
+      (req_mbxuxe)
+   PATCH /api/souscriptions-abonnements/59/statut → 4 appels
+      ↳ Auth
+      (req_sy078p, req_zoazsq, req_rrm32k, req_2c8pn0)
+   PATCH /api/souscriptions-abonnements/60/statut → 2 appels
+      ↳ Auth
+      (req_zq56g5, req_rvsfnm)
+   POST /api/echeances-abonnements → 1 appel
+      ↳ Auth
+      (req_b8i9m9)
+   PATCH /api/souscriptions-abonnements/61/tarif → 1 appel
+      ↳ Auth
+      (req_uy707b)
+   PATCH /api/souscriptions-abonnements/62/statut → 1 appel
+      ↳ Auth
+      (req_c0lfzs)
+
+[req_c0lfzs]     [DB] UserAccessOverride.findUnique
+     ✓ 2 ms
+
+⚠ APPELS RÉPÉTITIFS — Role.findFirst — 20 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      ↳ Auth
+      (req_ny8sn0, req_mbyjik, req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p)
+   PATCH /api/souscriptions-abonnements/56/statut → 1 appel
+      ↳ Auth
+      (req_b35ojg)
+   PATCH /api/souscriptions-abonnements/57/statut → 2 appels
+      ↳ Auth
+      (req_1d4fp7, req_lsu7ix)
+   PATCH /api/souscriptions-abonnements/58/statut → 1 appel
+      ↳ Auth
+      (req_mbxuxe)
+   PATCH /api/souscriptions-abonnements/59/statut → 4 appels
+      ↳ Auth
+      (req_sy078p, req_zoazsq, req_rrm32k, req_2c8pn0)
+   PATCH /api/souscriptions-abonnements/60/statut → 2 appels
+      ↳ Auth
+      (req_zq56g5, req_rvsfnm)
+   POST /api/echeances-abonnements → 1 appel
+      ↳ Auth
+      (req_b8i9m9)
+   PATCH /api/souscriptions-abonnements/61/tarif → 1 appel
+      ↳ Auth
+      (req_uy707b)
+   PATCH /api/souscriptions-abonnements/62/statut → 1 appel
+      ↳ Auth
+      (req_c0lfzs)
+
+[req_c0lfzs]     [DB] Role.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — RoleAccessMatrix.findUnique — 20 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      ↳ Auth
+      (req_ny8sn0, req_mbyjik, req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p)
+   PATCH /api/souscriptions-abonnements/56/statut → 1 appel
+      ↳ Auth
+      (req_b35ojg)
+   PATCH /api/souscriptions-abonnements/57/statut → 2 appels
+      ↳ Auth
+      (req_1d4fp7, req_lsu7ix)
+   PATCH /api/souscriptions-abonnements/58/statut → 1 appel
+      ↳ Auth
+      (req_mbxuxe)
+   PATCH /api/souscriptions-abonnements/59/statut → 4 appels
+      ↳ Auth
+      (req_sy078p, req_zoazsq, req_rrm32k, req_2c8pn0)
+   PATCH /api/souscriptions-abonnements/60/statut → 2 appels
+      ↳ Auth
+      (req_zq56g5, req_rvsfnm)
+   POST /api/echeances-abonnements → 1 appel
+      ↳ Auth
+      (req_b8i9m9)
+   PATCH /api/souscriptions-abonnements/61/tarif → 1 appel
+      ↳ Auth
+      (req_uy707b)
+   PATCH /api/souscriptions-abonnements/62/statut → 1 appel
+      ↳ Auth
+      (req_c0lfzs)
+
+[req_c0lfzs]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.findFirst — 20 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      (req_ny8sn0, req_mbyjik, req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p)
+   PATCH /api/souscriptions-abonnements/56/statut → 1 appel
+      (req_b35ojg)
+   PATCH /api/souscriptions-abonnements/57/statut → 2 appels
+      (req_1d4fp7, req_lsu7ix)
+   PATCH /api/souscriptions-abonnements/58/statut → 1 appel
+      (req_mbxuxe)
+   PATCH /api/souscriptions-abonnements/59/statut → 4 appels
+      (req_sy078p, req_zoazsq, req_rrm32k, req_2c8pn0)
+   PATCH /api/souscriptions-abonnements/60/statut → 2 appels
+      (req_zq56g5, req_rvsfnm)
+   POST /api/echeances-abonnements → 1 appel
+      (req_b8i9m9)
+   PATCH /api/souscriptions-abonnements/61/tarif → 1 appel
+      (req_uy707b)
+   PATCH /api/souscriptions-abonnements/62/statut → 1 appel
+      (req_c0lfzs)
+
+[req_c0lfzs]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 2 ms
+
+[req_t8gzp6] → PATCH /api/souscriptions-abonnements/62/tarif
+
+[req_t8gzp6] ▸ Auth
+
+[req_c0lfzs]     [DB] SouscriptionAbonnement.update
+     ✓ 90 ms
+[req_t8gzp6]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_t8gzp6]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_t8gzp6]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_t8gzp6]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_t8gzp6]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_t8gzp6]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_tsettz] → POST /api/souscriptions-abonnements
+
+[req_tsettz] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+[req_tsettz]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_tsettz]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_tsettz]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_tsettz]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_tsettz]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_tsettz]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_tsettz]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_tsettz]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_j72png] → POST /api/echeances-abonnements
+
+[req_j72png] ▸ Auth
+
+[req_tsettz]     [DB] SouscriptionAbonnement.create
+     ✓ 121 ms
+[req_j72png]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_j72png]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_j72png]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_j72png]     [DB] Role.findFirst
+     ✓ 4 ms
+[req_j72png]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_j72png]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_87fh1k] → POST /api/paiements-abonnements
+
+[req_87fh1k] ▸ Auth
+
+[req_j72png]     [DB] EcheanceAbonnement.create
+     ✓ 2 ms
+[req_87fh1k]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_87fh1k]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_87fh1k]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_87fh1k]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_87fh1k]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_87fh1k]     [DB] EcheanceAbonnement.findMany
+     ✓ 5 ms · 1 ligne
+[req_87fh1k]     [DB] FinancialCategory.findFirst
+     ✓ 2 ms
+[req_87fh1k]     [DB] TransactionFinanciere.create
+     ✓ 1 ms
+[req_87fh1k]     [DB] PaiementAbonnement.create
+     ✓ 1 ms
+[req_87fh1k]     [DB] EcheanceAbonnement.update
+     ✓ 1 ms
+
+⚠ REQUÊTES HTTP RÉPÉTÉES — POST /api/souscriptions-abonnements — 7 appels en 2.0 s
+   req_o4mpxf  req_rz2tv7  req_yqjr98  req_mr4f8k  req_rnfr0p  req_tsettz  req_eddwcr
+
+
+[req_eddwcr] → POST /api/souscriptions-abonnements
+
+[req_eddwcr] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+[req_eddwcr]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_eddwcr]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_eddwcr]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_eddwcr]     [DB] Role.findFirst
+     ✓ 3 ms
+[req_eddwcr]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — Abonnement.findFirst — 7 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      (req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p, req_tsettz, req_eddwcr)
+
+[req_eddwcr]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+
+⚠ APPELS RÉPÉTITIFS — Collaborateur.findFirst — 7 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      (req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p, req_tsettz, req_eddwcr)
+
+[req_eddwcr]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_eddwcr]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_flrx0g] → PATCH /api/souscriptions-abonnements/64/statut
+
+[req_flrx0g] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.create — 7 appels en 2.0 s
+
+   POST /api/souscriptions-abonnements → 7 appels
+      (req_o4mpxf, req_rz2tv7, req_yqjr98, req_mr4f8k, req_rnfr0p, req_tsettz, req_eddwcr)
+
+[req_eddwcr]     [DB] SouscriptionAbonnement.create
+     ✓ 91 ms
+[req_flrx0g]     [DB] Utilisateur.findUnique
+     ✓ 2 ms
+[req_flrx0g]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_flrx0g]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_flrx0g]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_flrx0g]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_flrx0g]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_e6zs7s] → POST /api/echeances-abonnements
+
+[req_e6zs7s] ▸ Auth
+
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.update — 7 appels en 2.0 s
+
+   PATCH /api/souscriptions-abonnements/58/statut → 1 appel
+      (req_mbxuxe)
+   PATCH /api/souscriptions-abonnements/59/statut → 1 appel
+      (req_sy078p)
+   PATCH /api/souscriptions-abonnements/60/statut → 2 appels
+      (req_zq56g5, req_rvsfnm)
+   PATCH /api/souscriptions-abonnements/61/tarif → 1 appel
+      (req_uy707b)
+   PATCH /api/souscriptions-abonnements/62/statut → 1 appel
+      (req_c0lfzs)
+   PATCH /api/souscriptions-abonnements/64/statut → 1 appel
+      (req_flrx0g)
+
+[req_flrx0g]     [DB] SouscriptionAbonnement.update
+     ✓ 97 ms
+[req_e6zs7s]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_e6zs7s]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_e6zs7s]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_e6zs7s]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_e6zs7s]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_e6zs7s]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_11ndka] → POST /api/souscriptions-abonnements
+
+[req_11ndka] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 108 ms
+[req_11ndka]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_11ndka]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_11ndka]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_11ndka]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_11ndka]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_11ndka]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_11ndka]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_11ndka]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_jor9mh] → PATCH /api/souscriptions-abonnements/65/statut
+
+[req_jor9mh] ▸ Auth
+
+[req_11ndka]     [DB] SouscriptionAbonnement.create
+     ✓ 102 ms
+[req_jor9mh]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_jor9mh]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_jor9mh]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_jor9mh]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_jor9mh]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_jor9mh]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_3voczw] → POST /api/echeances-abonnements
+
+[req_3voczw] ▸ Auth
+
+[req_jor9mh]     [DB] SouscriptionAbonnement.update
+     ✓ 75 ms
+[req_3voczw]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_3voczw]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_3voczw]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_3voczw]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_3voczw]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_3voczw]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[hors-req]     [DB] SouscriptionAbonnement.findMany
+     ✓ 1 ms · 12 lignes
+[hors-req]     [DB] EcheanceAbonnement.findMany
+     ✓ 1 ms · 2 lignes
+[hors-req]     [DB] PaiementAbonnement.deleteMany
+     ✓ 69 ms
+[hors-req]     [DB] EcheanceAbonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] TransactionFinanciere.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] SouscriptionAbonnement.deleteMany
+     ✓ 6 ms
+[hors-req]     [DB] Abonnement.deleteMany
+     ✓ 3 ms
+[hors-req]     [DB] Collaborateur.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Abonnement.create
+     ✓ 1 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+
+[req_x7ko20] → POST /api/souscriptions-abonnements
+
+[req_x7ko20] ▸ Auth
+
+[hors-req]     [DB] Abonnement.create
+     ✓ 2 ms
+[req_x7ko20]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_x7ko20]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_x7ko20]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_x7ko20]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_x7ko20]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_x7ko20]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_x7ko20]     [DB] Collaborateur.findFirst
+     ✓ 2 ms
+[req_x7ko20]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_vcrlnr] → POST /api/souscriptions-abonnements
+
+[req_vcrlnr] ▸ Auth
+
+[req_x7ko20]     [DB] SouscriptionAbonnement.create
+     ✓ 68 ms
+[req_vcrlnr]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_vcrlnr]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_vcrlnr]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_vcrlnr]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_vcrlnr]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_vcrlnr]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_vcrlnr]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_vcrlnr]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[hors-req]     [DB] SouscriptionAbonnement.findMany
+     ✓ 2 ms · 1 ligne
+
+[req_ezl5gw] → POST /api/souscriptions-abonnements
+
+[req_ezl5gw] ▸ Auth
+
+[hors-req]     [DB] SouscriptionAbonnement.update
+     ✓ 60 ms
+[req_ezl5gw]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_ezl5gw]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_ezl5gw]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_ezl5gw]     [DB] Role.findFirst
+     ✓ 2 ms
+[req_ezl5gw]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_ezl5gw]     [DB] Abonnement.findFirst
+     ✓ 2 ms
+[req_ezl5gw]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_ezl5gw]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_byrez6] → POST /api/souscriptions-abonnements
+
+[req_byrez6] ▸ Auth
+
+[req_ezl5gw]     [DB] SouscriptionAbonnement.create
+     ✓ 66 ms
+[req_byrez6]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_byrez6]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_byrez6]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_byrez6]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_byrez6]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_byrez6]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_byrez6]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_byrez6]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_kiq6ok] → POST /api/souscriptions-abonnements
+
+[req_kiq6ok] ▸ Auth
+
+[req_byrez6]     [DB] SouscriptionAbonnement.create
+     ✓ 74 ms
+[req_kiq6ok]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_kiq6ok]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_kiq6ok]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_kiq6ok]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_kiq6ok]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_kiq6ok]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_kiq6ok]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_kiq6ok]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_kiq6ok]     [DB] SouscriptionAbonnement.create
+     ✓ 74 ms
+
+[req_ithexz] → POST /api/souscriptions-abonnements
+
+[req_ithexz] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 2 ms
+[req_ithexz]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_ithexz]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_ithexz]     [DB] UserAccessOverride.findUnique
+     ✓ 2 ms
+[req_ithexz]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_ithexz]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_ithexz]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_ithexz]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_ithexz]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_jsnvam] → PATCH /api/souscriptions-abonnements/70/statut
+
+[req_jsnvam] ▸ Auth
+
+[req_ithexz]     [DB] SouscriptionAbonnement.create
+     ✓ 80 ms
+[req_jsnvam]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_jsnvam]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_jsnvam]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_jsnvam]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_jsnvam]     [DB] RoleAccessMatrix.findUnique
+     ✓ 3 ms
+[req_jsnvam]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_zq5dkh] → POST /api/souscriptions-abonnements
+
+[req_zq5dkh] ▸ Auth
+
+[req_jsnvam]     [DB] SouscriptionAbonnement.update
+     ✓ 71 ms
+[req_zq5dkh]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_zq5dkh]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_zq5dkh]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_zq5dkh]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_zq5dkh]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_zq5dkh]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_zq5dkh]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_zq5dkh]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_zq5dkh]     [DB] SouscriptionAbonnement.create
+     ✓ 5 ms
+[hors-req]     [DB] SouscriptionAbonnement.deleteMany
+     ✓ 3 ms
+
+[req_su7xat] → POST /api/souscriptions-abonnements
+
+[req_su7xat] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.delete
+     ✓ 3 ms
+[req_su7xat]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_su7xat]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_su7xat]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_su7xat]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_su7xat]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_su7xat]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_su7xat]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+
+[req_xwnx1q] → POST /api/souscriptions-abonnements
+
+[req_xwnx1q] ▸ Auth
+
+[req_su7xat]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[req_xwnx1q]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_xwnx1q]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_xwnx1q]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_xwnx1q]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_xwnx1q]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_xwnx1q]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_xwnx1q]     [DB] Collaborateur.findFirst
+     ✓ 1 ms
+[req_xwnx1q]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+[hors-req]     [DB] SouscriptionAbonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] SouscriptionAbonnement.findMany
+     ✓ 1 ms · 3 lignes
+[hors-req]     [DB] EcheanceAbonnement.findMany
+     ✓ 1 ms · 0 lignes
+[hors-req]     [DB] TransactionFinanciere.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] SouscriptionAbonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Abonnement.deleteMany
+     ✓ 3 ms
+[hors-req]     [DB] Collaborateur.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Abonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Abonnement.create
+     ✓ 2 ms
+[hors-req]     [DB] Abonnement.create
+     ✓ 1 ms
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+
+[req_jd0nm7] → DELETE /api/abonnements/34
+
+[req_jd0nm7] ▸ Auth
+
+[hors-req]     [DB] SouscriptionAbonnement.create
+     ✓ 2 ms
+[req_jd0nm7]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_jd0nm7]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_jd0nm7]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_jd0nm7]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_jd0nm7]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_jd0nm7]     [DB] Abonnement.findFirst
+     ✓ 4 ms
+[req_jd0nm7]     [DB] Abonnement.delete
+     ✓ 72 ms
+
+[req_l280rf] → DELETE /api/abonnements/35
+
+[req_l280rf] ▸ Auth
+
+[hors-req]     [DB] Abonnement.findUnique
+     ✓ 1 ms
+[req_l280rf]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_l280rf]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_l280rf]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_l280rf]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_l280rf]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+
+[req_ngz2er] → PATCH /api/abonnements/35/statut
+
+[req_ngz2er] ▸ Auth
+
+[req_l280rf]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[req_ngz2er]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_ngz2er]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_ngz2er]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_ngz2er]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_ngz2er]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_ngz2er]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+
+[req_t1f1px] → PATCH /api/abonnements/35/statut
+
+[req_t1f1px] ▸ Auth
+
+[req_ngz2er]     [DB] SouscriptionAbonnement.count
+     ✓ 2 ms
+[req_t1f1px]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_t1f1px]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_t1f1px]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_t1f1px]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_t1f1px]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_t1f1px]     [DB] Abonnement.findFirst
+     ✓ 3 ms
+[req_t1f1px]     [DB] Abonnement.update
+     ✓ 55 ms
+[hors-req]     [DB] SouscriptionAbonnement.findFirst
+     ✓ 1 ms
+
+[req_y4bw5g] → POST /api/souscriptions-abonnements
+
+[req_y4bw5g] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.create
+     ✓ 1 ms
+[req_y4bw5g]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_y4bw5g]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_y4bw5g]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_y4bw5g]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_y4bw5g]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_y4bw5g]     [DB] Abonnement.findFirst
+     ✓ 1 ms
+[hors-req]     [DB] Collaborateur.deleteMany
+     ✓ 81 ms
+
+⚠ APPELS RÉPÉTITIFS — SouscriptionAbonnement.deleteMany — 0 appels en 2.0 s
+
+
+[hors-req]     [DB] SouscriptionAbonnement.deleteMany
+     ✓ 1 ms
+[hors-req]     [DB] Abonnement.deleteMany
+     ✓ 1 ms
+
+[req_l6qqh8] → GET /api/souscriptions-abonnements
+
+[req_l6qqh8] ▸ Auth
+
+[hors-req]     [DB] Collaborateur.deleteMany
+     ✓ 1 ms
+[req_l6qqh8]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_l6qqh8]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_l6qqh8]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_l6qqh8]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_l6qqh8]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_l6qqh8]     [DB] SouscriptionAbonnement.findMany
+     ✓ 9 ms · 15 lignes
+
+[req_d9885p] → GET /api/abonnements
+
+[req_d9885p] ▸ Auth
+
+[req_l6qqh8]     [DB] Collaborateur.findMany
+     ✓ 2 ms · 6 lignes
+[req_d9885p]     [DB] Utilisateur.findUnique
+     ✓ 1 ms
+[req_d9885p]     [DB] AccessDomain.findFirst
+     ✓ 1 ms
+[req_d9885p]     [DB] UserAccessOverride.findUnique
+     ✓ 1 ms
+[req_d9885p]     [DB] Role.findFirst
+     ✓ 1 ms
+[req_d9885p]     [DB] RoleAccessMatrix.findUnique
+     ✓ 1 ms
+[req_d9885p]     [DB] Abonnement.findMany
+     ✓ 4 ms · 8 lignes

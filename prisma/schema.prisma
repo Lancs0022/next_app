@@ -188,6 +188,7 @@ model ProduitCatalogue {
   deleted_at       DateTime?
 
   unite_mesure     UniteDeMesure? @relation(fields: [id_unite], references: [id_unite])
+  lots             LivraisonItem[]
 
   @@map("produit_catalogue")
 }
@@ -270,7 +271,8 @@ model LivraisonItem {
   deleted_at         DateTime?
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
-  livraison          Livraison @relation(fields: [id_livraison], references: [id_livraison])
+  livraison          Livraison        @relation(fields: [id_livraison], references: [id_livraison])
+  produit_catalogue  ProduitCatalogue @relation(fields: [id_produit], references: [id_produit])
 
   @@map("livraison_item")
 }
@@ -417,45 +419,189 @@ model FinancialCategory {
 }
 
 // ==================== ABONNEMENTS ====================
+//
+// Architecture en 4 couches :
+//
+//   Abonnement              → offre commerciale / catalogue
+//       └── SouscriptionAbonnement  → relation Collaborateur ↔ Offre (active, suspendue, terminée ou annulée)
+//               └── EcheanceAbonnement  → obligation financière d'une période
+//                       └── PaiementAbonnement  → encaissement réel
+//                               └── TransactionFinanciere  → journal financier
+//
+// Règles fondamentales :
+//   - Abonnement.montant              = prix catalogue actuel (évolutif, ne rétroagit jamais)
+//   - SouscriptionAbonnement.montant  = tarif applicable actuellement à ce collaborateur
+//   - EcheanceAbonnement.montant      = snapshot figé du montant dû pour la période
+//   - PaiementAbonnement.montant      = encaissé réel, indépendant de l'échéance
+//
+// Annulation : canceled_at / canceled_by — jamais de suppression physique.
 
+/// Offre commerciale d'abonnement proposée par PEJAA.
+/// Abonnement.montant est le prix catalogue actuel — sa modification ne rétroagit
+/// jamais sur les SouscriptionAbonnement, EcheanceAbonnement ou PaiementAbonnement existants.
+///
+/// Cycle de vie du statut :
+///   ACTIVE   → les nouvelles souscriptions sont autorisées
+///   INACTIVE → aucune nouvelle souscription, les souscriptions existantes continuent
+///   ARCHIVED → offre conservée uniquement pour l'historique
+///
+/// Contrainte de suppression physique :
+///   - interdit si au moins une SouscriptionAbonnement existe (même annulée)
+///   - autorisé uniquement si aucune souscription n'a jamais existé
+///   - désactiver une offre ne doit JAMAIS annuler automatiquement les souscriptions existantes
 model Abonnement {
-  id_abonnement      Int                       @id @default(autoincrement())
-  tenant_id          Int
-  nom                String
-  montant            Decimal                   @db.Decimal(10, 2)
-  periodicite        String
-  impact_type        String?
-  impact_montant     Decimal?                  @db.Decimal(10, 2)
-  impact_pourcentage Decimal?                  @db.Decimal(5, 2)
-  actif              Boolean                   @default(true)
-  created_at         DateTime                  @default(now())
-  updated_at         DateTime                  @updatedAt
-  paiements          AbonnementPaiement[]
-  collaborateurs     AbonnementCollaborateur[]
+  id_abonnement  Int                       @id @default(autoincrement())
+  tenant_id      Int
+  nom            String
+  description    String?
+  /// Prix catalogue actuel de l'offre. Évolutif — ne jamais utiliser pour reconstruire l'historique.
+  montant        Decimal                   @db.Decimal(10, 2)
+  /// mensuel | trimestriel | annuel | ponctuel
+  periodicite    String
+  /// ACTIVE | INACTIVE | ARCHIVED
+  statut         String                    @default("ACTIVE")
+
+  created_by     Int?
+  created_at     DateTime                  @default(now())
+  modified_by    Int?
+  modified_at    DateTime?
+
+  souscriptions  SouscriptionAbonnement[]
 
   @@map("abonnement")
 }
 
-model AbonnementPaiement {
-  id_paiement   Int        @id @default(autoincrement())
-  id_abonnement Int
-  montant       Decimal    @db.Decimal(10, 2)
-  date_paiement DateTime   @default(now())
-  abonnement    Abonnement @relation(fields: [id_abonnement], references: [id_abonnement])
+/// Relation commerciale entre un collaborateur et une offre d'abonnement.
+/// Peut représenter une souscription actuellement active, suspendue, terminée ou annulée.
+///
+/// montant = tarif actuellement applicable à CE collaborateur.
+/// Il peut différer de Abonnement.montant (tarif catalogue).
+/// Ce n'est PAS le montant historique figé des échéances — c'est le tarif
+/// en vigueur qui sera utilisé lors de la prochaine génération d'échéance.
+///
+/// Les montants historiques sont portés par EcheanceAbonnement.montant.
+///
+/// Cycle de vie du statut :
+///   ACTIVE    → souscription en cours, génération d'échéances autorisée
+///   SUSPENDUE → temporairement inactive, pas de nouvelles échéances
+///   TERMINEE  → arrivée à date_fin, historique conservé
+///   ANNULEE   → annulation métier explicite (canceled_at renseigné)
+///
+/// Une migration commerciale (changement d'offre ou de tarif structurant)
+/// se représente comme : ancienne souscription date_fin → nouvelle souscription.
+/// Ne jamais réécrire id_abonnement ou montant sur une souscription existante.
+model SouscriptionAbonnement {
+  id_souscription_abonnement  Int                    @id @default(autoincrement())
+  tenant_id                   Int
+  id_abonnement               Int
+  id_collaborateur            Int
 
-  @@map("abonnement_paiement")
+  /// Tarif actuellement applicable à ce collaborateur.
+  /// Peut différer du catalogue. Utilisé pour générer les prochaines échéances.
+  montant                     Decimal                @db.Decimal(10, 2)
+
+  renouvellement_auto         Boolean                @default(true)
+  date_debut                  DateTime
+  date_fin                    DateTime?
+
+  /// ACTIVE | SUSPENDUE | TERMINEE | ANNULEE
+  statut                      String                 @default("ACTIVE")
+
+  /// Renseigner pour annuler — ne jamais supprimer physiquement.
+  canceled_at                 DateTime?
+  canceled_by                 Int?
+
+  created_by                  Int?
+  created_at                  DateTime               @default(now())
+  modified_by                 Int?
+  modified_at                 DateTime?
+
+  abonnement                  Abonnement             @relation(fields: [id_abonnement], references: [id_abonnement])
+  echeances                   EcheanceAbonnement[]
+
+  @@map("souscription_abonnement")
 }
 
-model AbonnementCollaborateur {
-  id_abonnement    Int
-  id_collaborateur Int
-  date_debut       DateTime?
-  date_fin         DateTime?
-  created_at       DateTime  @default(now())
-  abonnement       Abonnement @relation(fields: [id_abonnement], references: [id_abonnement])
+/// Obligation financière concrète pour une période donnée.
+///
+/// montant = snapshot figé du montant dû à la génération de cette échéance.
+/// Une modification ultérieure de SouscriptionAbonnement.montant ou Abonnement.montant
+/// ne modifie JAMAIS une échéance déjà créée.
+///
+/// statut : en_attente | partiellement_payee | payee | annulee
+model EcheanceAbonnement {
+  id_echeance_abonnement     Int                      @id @default(autoincrement())
+  tenant_id                  Int
+  id_souscription_abonnement Int
 
-  @@id([id_abonnement, id_collaborateur])
-  @@map("abonnement_collaborateur")
+  /// Snapshot figé du montant dû pour cette période. Jamais recalculé après création.
+  montant                    Decimal                  @db.Decimal(10, 2)
+
+  periode_debut              DateTime
+  periode_fin                DateTime
+
+  /// en_attente | partiellement_payee | payee | annulee
+  statut                     String                   @default("en_attente")
+
+  /// Renseigner pour annuler — ne jamais supprimer physiquement.
+  canceled_at                DateTime?
+  canceled_by                Int?
+
+  created_by                 Int?
+  created_at                 DateTime                 @default(now())
+  modified_by                Int?
+  modified_at                DateTime?
+
+  souscription               SouscriptionAbonnement   @relation(fields: [id_souscription_abonnement], references: [id_souscription_abonnement])
+  paiements                  PaiementAbonnement[]
+
+  /// Contrainte d'idempotence : une même souscription ne peut avoir qu'une seule échéance
+  /// par date de début. Protège le job de renouvellement contre les doublons.
+  @@unique([id_souscription_abonnement, periode_debut])
+  @@map("echeance_abonnement")
+}
+
+/// Encaissement réel pour une échéance.
+///
+/// montant est indépendant de EcheanceAbonnement.montant :
+///   paiement partiel, multiple, ou en erreur sont valides — excédent interdit en V1.
+/// Un paiement ne doit jamais être rattaché directement à Abonnement ou SouscriptionAbonnement —
+/// il appartient obligatoirement à une EcheanceAbonnement.
+///
+/// Paiement groupé : plusieurs PaiementAbonnement partagent le même id_transaction_financiere.
+/// Dans ce cas : N lignes PaiementAbonnement → 1 seule TransactionFinanciere(IN).
+///   source_module = 'ABONNEMENT'
+///   source_id     = id_souscription_abonnement
+///
+/// Annulation : canceled_at / canceled_by — ne jamais supprimer physiquement.
+/// L'annulation se fait au niveau du groupe (id_transaction_financiere), pas ligne par ligne.
+model PaiementAbonnement {
+  id_paiement_abonnement    Int                @id @default(autoincrement())
+  tenant_id                 Int
+  id_echeance_abonnement    Int
+
+  /// Montant réellement encaissé sur cette échéance. Indépendant de EcheanceAbonnement.montant.
+  montant                   Decimal            @db.Decimal(10, 2)
+  date_paiement             DateTime           @default(now())
+
+  /// Relie ce paiement à la TransactionFinanciere commune du groupe.
+  /// NULL pour les paiements créés avant cette évolution (rétrocompatibilité).
+  /// Si plusieurs PaiementAbonnement partagent le même id_transaction_financiere,
+  /// ils font partie du même acte de paiement global.
+  id_transaction_financiere Int?
+
+  /// Renseigner pour annuler — ne jamais supprimer physiquement.
+  canceled_at               DateTime?
+  canceled_by               Int?
+
+  created_by                Int?
+  created_at                DateTime           @default(now())
+  modified_by               Int?
+  modified_at               DateTime?
+
+  echeance                  EcheanceAbonnement  @relation(fields: [id_echeance_abonnement], references: [id_echeance_abonnement])
+
+  @@map("paiement_abonnement")
 }
 
 // ==================== STOCK AJUSTEMENT (legacy — use stock_mouvement) ====================
