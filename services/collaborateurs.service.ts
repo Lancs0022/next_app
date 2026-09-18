@@ -53,35 +53,53 @@ export async function listCollaborateurs(params: CollaborateurQueryParams) {
     },
   })
 
-  // Indexer par collaborateur — on garde uniquement la souscription la plus récente
-  const souscriptionByCollab = new Map<number, typeof souscriptions[0]>()
+  // Indexer par collaborateur — on garde TOUTES les souscriptions
+  const souscriptionsByCollab = new Map<number, (typeof souscriptions)[0][]>()
   for (const s of souscriptions) {
-    if (!souscriptionByCollab.has(s.id_collaborateur)) {
-      souscriptionByCollab.set(s.id_collaborateur, s)
-    }
+    const arr = souscriptionsByCollab.get(s.id_collaborateur) ?? []
+    arr.push(s)
+    souscriptionsByCollab.set(s.id_collaborateur, arr)
   }
 
   const data = rows.map(r => {
-    const s = souscriptionByCollab.get(r.id_collaborateur) ?? null
-    const echeance = s?.echeances[0] ?? null
+    const toutes = souscriptionsByCollab.get(r.id_collaborateur) ?? []
+    // La souscription principale = la première ACTIVE, sinon la plus récente
+    const principale = toutes.find(s => s.statut === 'ACTIVE') ?? toutes[0] ?? null
+    const echeance = principale?.echeances[0] ?? null
     const montantPaye = echeance
       ? echeance.paiements.reduce((acc, p) => acc + Number(p.montant), 0)
       : 0
 
+    const nbActives = toutes.filter(s => s.statut === 'ACTIVE').length
+    const montantTotal = toutes
+      .filter(s => s.statut === 'ACTIVE')
+      .reduce((acc, s) => acc + Number(s.montant), 0)
+    const hasImpaye = toutes.some(s =>
+      s.echeances.some(e =>
+        e.statut === 'en_attente' || e.statut === 'partiellement_payee'
+      )
+    )
+
     return {
       ...r,
-      abonnement_situation: s
+      abonnement_situation: principale
         ? {
-            id_souscription_abonnement: s.id_souscription_abonnement,
-            nom_offre:          s.abonnement.nom,
-            periodicite:        s.abonnement.periodicite,
-            montant_applicable: Number(s.montant),
-            statut_souscription: s.statut,
-            echeance_statut:    echeance?.statut ?? null,
-            echeance_montant:   echeance ? Number(echeance.montant) : null,
-            echeance_paye:      echeance ? montantPaye : null,
-            echeance_reste:     echeance ? Number(echeance.montant) - montantPaye : null,
-            echeance_fin:       echeance?.periode_fin ?? null,
+            id_souscription_abonnement: principale.id_souscription_abonnement,
+            nom_offre:           principale.abonnement.nom,
+            periodicite:         principale.abonnement.periodicite,
+            montant_applicable:  Number(principale.montant),
+            statut_souscription: principale.statut,
+            echeance_statut:     echeance?.statut ?? null,
+            echeance_montant:    echeance ? Number(echeance.montant) : null,
+            echeance_paye:       echeance ? montantPaye : null,
+            echeance_reste:      echeance ? Number(echeance.montant) - montantPaye : null,
+            echeance_fin:        echeance?.periode_fin ?? null,
+            // Champs enrichis
+            nb_souscriptions:    toutes.length,
+            nb_actives:          nbActives,
+            montant_total:       montantTotal,
+            has_impaye:          hasImpaye,
+            renouvellement_auto: principale.renouvellement_auto,
           }
         : null,
     }

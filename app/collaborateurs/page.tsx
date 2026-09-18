@@ -26,6 +26,12 @@ interface AbonnementSituation {
   echeance_paye: number | null
   echeance_reste: number | null
   echeance_fin: string | null
+  // Champs enrichis
+  nb_souscriptions: number
+  nb_actives: number
+  montant_total: number
+  has_impaye: boolean
+  renouvellement_auto: boolean
 }
 
 interface Collaborateur {
@@ -138,44 +144,85 @@ function BadgeEcheance({ statut }: { statut: string }) {
 // ─── Cellule situation abonnement (dans la table) ─────────────────────────────
 
 function CelluleAbonnement({ situation }: { situation: AbonnementSituation | null }) {
+  // ─ Cas 0 : Aucune souscription ─────────────────────────────────────────────
   if (!situation) {
-    return <span className="text-slate-400 dark:text-slate-500 text-xs">Aucun</span>
+    return (
+      <div className="flex items-center gap-1.5">
+        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+        <span className="text-slate-400 dark:text-slate-500 text-xs">Aucun abonnement</span>
+      </div>
+    )
   }
 
+  // ─ Cas 2 : Plusieurs souscriptions actives ──────────────────────────────────
+  if (situation.nb_actives > 1) {
+    return (
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-medium text-slate-900 dark:text-white leading-tight">
+            {situation.nb_actives} abonnements actifs
+          </span>
+          {situation.has_impaye && (
+            <span className="inline-flex items-center gap-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
+              <AlertCircle className="w-3 h-3" /> Impayé
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          {formatMontant(situation.montant_total)}
+          {' / '}
+          {PERIODICITE_LABELS[situation.periodicite] ?? situation.periodicite}
+          {' total'}
+        </p>
+      </div>
+    )
+  }
+
+  // ─ Cas 1 : Une souscription unique ──────────────────────────────────────────
   const impaye = situation.echeance_statut === 'en_attente' || situation.echeance_statut === 'partiellement_payee'
   const partiel = situation.echeance_statut === 'partiellement_payee'
 
   return (
     <div className="space-y-0.5">
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-sm font-medium text-slate-900 dark:text-white leading-tight">
           {situation.nom_offre}
         </span>
         <BadgeSouscription statut={situation.statut_souscription} />
       </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-slate-500 dark:text-slate-400">
-          {formatMontant(situation.montant_applicable)} / {PERIODICITE_LABELS[situation.periodicite] ?? situation.periodicite}
+          {formatMontant(situation.montant_applicable)}
+          {' / '}
+          {PERIODICITE_LABELS[situation.periodicite] ?? situation.periodicite}
         </span>
-        {impaye && (
-          <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${partiel ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
-            {partiel
-              ? <><AlertCircle className="w-3 h-3" /> Partielle</>
-              : <><AlertCircle className="w-3 h-3" /> Impayée</>
-            }
+        {situation.renouvellement_auto ? (
+          <span className="inline-flex items-center gap-0.5 text-xs text-blue-600 dark:text-blue-400">
+            <RefreshCw className="w-3 h-3" /> Auto
           </span>
+        ) : (
+          <span className="text-xs text-slate-400 dark:text-slate-500">Manuel</span>
         )}
-        {situation.echeance_statut === 'payee' && (
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {impaye ? (
+          <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+            partiel ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
+          }`}>
+            <AlertCircle className="w-3 h-3" />
+            {partiel ? 'Partielle' : 'Impayée'}
+          </span>
+        ) : (
           <span className="inline-flex items-center gap-0.5 text-xs font-medium text-green-600 dark:text-green-400">
             <CheckCircle2 className="w-3 h-3" /> À jour
           </span>
         )}
+        {situation.echeance_fin && (
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            jusqu&apos;au {new Date(situation.echeance_fin).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          </span>
+        )}
       </div>
-      {situation.echeance_fin && (
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          Couvert jusqu'au {new Date(situation.echeance_fin).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-        </p>
-      )}
     </div>
   )
 }
@@ -629,16 +676,13 @@ export default function CollaborateursPage() {
     { label: 'Actifs', value: data.filter(d => d.statut === 'actif').length, color: 'bg-green-500', Icon: CheckCircle2 },
     {
       label: 'Abonnés',
-      value: data.filter(d => d.abonnement_situation?.statut_souscription === 'ACTIVE').length,
+      value: data.filter(d => (d.abonnement_situation?.nb_actives ?? 0) > 0).length,
       color: 'bg-blue-500',
       Icon: CreditCard,
     },
     {
       label: 'Impayés',
-      value: data.filter(d =>
-        d.abonnement_situation?.echeance_statut === 'en_attente' ||
-        d.abonnement_situation?.echeance_statut === 'partiellement_payee'
-      ).length,
+      value: data.filter(d => d.abonnement_situation?.has_impaye === true).length,
       color: 'bg-orange-500',
       Icon: AlertCircle,
     },
