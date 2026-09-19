@@ -27,6 +27,7 @@ interface DateRangeFilterProps {
   hideTrigger?: boolean                  // hide the button trigger
   hideTargetSelect?: boolean             // hide the "Filtrer par" select
   defaultTarget?: string                 // pre-set draft.target on open
+  targetOptions?: { value: string; label: string }[] // options personnalisées pour Filtrer par
 }
 
 const startOfDay = (d: Date | string): Date => {
@@ -125,7 +126,9 @@ const DateRangeFilter = ({
   hideTrigger = false,
   hideTargetSelect = false,
   defaultTarget,
+  targetOptions,
 }: DateRangeFilterProps) => {
+  const effectiveDefaultTarget = defaultTarget || (targetOptions && targetOptions[0]?.value) || 'date_livraison'
   const [internalOpen, setInternalOpen] = useState(false)
   const open = openProp ?? internalOpen
   const setOpen = (v: boolean) => {
@@ -134,7 +137,7 @@ const DateRangeFilter = ({
   }
 
   const [draft, setDraft] = useState({
-    target: 'date_livraison',
+    target: effectiveDefaultTarget,
     mode: 'jour',
     offset: 'J0',
     day: '',
@@ -247,7 +250,7 @@ const DateRangeFilter = ({
     if (!open) return
     if (value && value.mode) {
       setDraft({
-        target: value.target || defaultTarget || 'date_livraison',
+        target: value.target || effectiveDefaultTarget,
         mode: value.mode || 'jour',
         offset: value.offset || 'J0',
         day: value.day || '',
@@ -258,7 +261,7 @@ const DateRangeFilter = ({
         end: value.end || ''
       })
     } else {
-      setDraft(prev => ({ ...prev, target: defaultTarget || 'date_livraison' }))
+      setDraft(prev => ({ ...prev, target: effectiveDefaultTarget }))
       applyOffset('jour', 'J0')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -374,9 +377,17 @@ const DateRangeFilter = ({
                 onChange={(e) => setDraft(prev => ({ ...prev, target: e.target.value }))}
                 className="w-full h-[42px] px-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
               >
-                <option value="date_livraison">Date d&apos;arrivée (livré le)</option>
-                <option value="date_creation">Inséré dans le système le</option>
-                <option value="date_vente">Vendu le</option>
+                {targetOptions && targetOptions.length > 0 ? (
+                  targetOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="date_livraison">Date d&apos;arrivée (livré le)</option>
+                    <option value="date_creation">Inséré dans le système le</option>
+                    <option value="date_vente">Vendu le</option>
+                  </>
+                )}
               </select>
             </div>
           )}

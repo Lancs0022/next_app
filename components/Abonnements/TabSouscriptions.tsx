@@ -1,13 +1,16 @@
-import React, { useMemo } from 'react'
-import { Users, RefreshCcw, ChevronDown } from 'lucide-react'
+import React, { useMemo, useState, useEffect } from 'react'
+import { Users, RefreshCcw, ChevronDown, CreditCard, XCircle, Eye } from 'lucide-react'
 import TypeaheadSelect from '@/components/TypeaheadSelect'
+import SelectWithTags from '@/components/SelectWithTags'
 import DateRangeFilter from '@/components/DateRangeFilter'
 import ResponsiveDataTable from '@/components/ResponsiveDataTable/ResponsiveDataTable'
+import ModalePaiementDirect from './ModalePaiementDirect'
 import {
   Souscription,
   SouscriptionDisplayRow,
   FiltresSouscription,
   DateFilterValue,
+  EcheanceItem,
 } from './abonnementsTypes'
 import {
   Avatar,
@@ -50,6 +53,8 @@ interface TabSouscriptionsProps {
   onToggleShowAllEcheances: (id: number) => void
   onOpenSouscrire: () => void
   onOpenDrawerSouscription: (id: number) => void
+  onPatchSouscriptionStatut?: (id: number, statut: 'ACTIVE' | 'SUSPENDUE' | 'TERMINEE' | 'ANNULEE') => Promise<void>
+  onRefreshAll: () => Promise<void>
 }
 
 export default function TabSouscriptions({
@@ -79,7 +84,62 @@ export default function TabSouscriptions({
   onToggleShowAllEcheances,
   onOpenSouscrire,
   onOpenDrawerSouscription,
+  onPatchSouscriptionStatut,
+  onRefreshAll,
 }: TabSouscriptionsProps) {
+  const [directPaiementEch, setDirectPaiementEch] = useState<EcheanceItem | null>(null)
+  const [directPaiementOpen, setDirectPaiementOpen] = useState(false)
+  const [contextMenu, setContextMenu] = useState<{
+    open: boolean
+    x: number
+    y: number
+    row: any
+  }>({
+    open: false,
+    x: 0,
+    y: 0,
+    row: null,
+  })
+
+  // Fermeture du menu contextuel au clic extérieur, scroll ou Échap
+  useEffect(() => {
+    if (!contextMenu.open) return
+    const dismiss = () => setContextMenu((prev) => ({ ...prev, open: false }))
+    window.addEventListener('mousedown', dismiss)
+    window.addEventListener('touchstart', dismiss)
+    window.addEventListener('scroll', dismiss, true)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', dismiss)
+      window.removeEventListener('touchstart', dismiss)
+      window.removeEventListener('scroll', dismiss, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [contextMenu.open])
+
+  // Options pour le filtre par statut dans un TypeaheadSelect
+  const optionsStatut = useMemo(() => {
+    return FILTRES.map((f) => {
+      const count =
+        f.id === 'TOUTES'
+          ? souscriptions.length
+          : f.id === 'IMPAYEES'
+          ? souscriptions.filter(
+              (s) =>
+                s.prochaine_echeance &&
+                ['en_attente', 'partiellement_payee'].includes(s.prochaine_echeance.statut)
+            ).length
+          : souscriptions.filter((s) => s.statut === f.id).length
+      return {
+        value: f.id,
+        label: `${f.label} (${count})`,
+      }
+    })
+  }, [souscriptions])
+
   // Options de filtrage
   const optionsCollab = useMemo(
     () => [
@@ -518,47 +578,22 @@ export default function TabSouscriptions({
 
   return (
     <div className="space-y-3">
-      {/* ── Barre principale : filtres statut + switch tri collab + bouton new + toggle filtres avancés ── */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* Filtres statut — scroll horizontal sur mobile */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0 flex-1 pb-0.5">
-          {FILTRES.map((f) => {
-            const count =
-              f.id === 'TOUTES'
-                ? souscriptions.length
-                : f.id === 'IMPAYEES'
-                ? souscriptions.filter(
-                    (s) =>
-                      s.prochaine_echeance &&
-                      ['en_attente', 'partiellement_payee'].includes(s.prochaine_echeance.statut)
-                  ).length
-                : souscriptions.filter((s) => s.statut === f.id).length
-            return (
-              <button
-                key={f.id}
-                onClick={() => {
-                  onSetFiltreActif(f.id)
-                  onPageChange(1)
-                }}
-                className={`flex-none px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                  filtreActif === f.id
-                    ? 'bg-primary text-white'
-                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-                }`}
-              >
-                {f.label}
-                <span
-                  className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-                    filtreActif === f.id
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            )
-          })}
+      {/* ── Barre principale : filtre statut SelectWithTags + switch tri collab + bouton new + toggle filtres avancés ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Filtre statut condensé via SelectWithTags */}
+        <div className="w-52 shrink-0">
+          <SelectWithTags
+            options={optionsStatut}
+            value={filtreActif}
+            onChange={(v) => {
+              if (v) {
+                onSetFiltreActif(v as FiltresSouscription)
+                onPageChange(1)
+              }
+            }}
+            placeholder="Statut…"
+            className="w-full"
+          />
         </div>
 
         {/* Actions droite */}
@@ -648,19 +683,20 @@ export default function TabSouscriptions({
                 placeholder="Toutes les offres…"
               />
             </div>
-            {/* Date de début */}
+            {/* Date filtrable (multi-variables : début, fin, création) */}
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                Date de début
-              </label>
               <DateRangeFilter
                 value={filtreDateDebut}
                 onChange={(v) => {
                   onSetFiltreDateDebut(v as DateFilterValue | null)
                   onPageChange(1)
                 }}
-                hideTargetSelect
                 defaultTarget="date_debut"
+                targetOptions={[
+                  { value: 'date_debut', label: 'Date de début de contrat' },
+                  { value: 'date_fin', label: 'Date de fin de contrat' },
+                  { value: 'created_at', label: 'Date de souscription' },
+                ]}
               />
             </div>
           </div>
@@ -759,15 +795,163 @@ export default function TabSouscriptions({
                 }
               })
             }}
-            onRowClick={(row) => {
+            onRowDoubleClick={(row) => {
               if (row._type === 'sous') {
                 onOpenDrawerSouscription(row.id_souscription_abonnement)
+              }
+            }}
+            onRowContextMenu={(row, e) => {
+              if (row._type === 'ech' || row._type === 'sous') {
+                e.preventDefault()
+                const menuW = 240
+                const menuH = 200
+                const winW = typeof window !== 'undefined' ? window.innerWidth : 800
+                const winH = typeof window !== 'undefined' ? window.innerHeight : 600
+                const x = Math.max(12, Math.min(e.clientX, winW - menuW - 12))
+                const y = Math.max(12, Math.min(e.clientY, winH - menuH - 12))
+                setContextMenu({ open: true, x, y, row })
               }
             }}
             onFiltersChange={() => {}}
           />
         )}
       </div>
+
+      {/* ── Menu contextuel élégant (clic droit / appui long mobile) ───────── */}
+      {contextMenu.open && contextMenu.row && (
+        <div
+          data-context-menu
+          style={{
+            position: 'fixed',
+            top: `${contextMenu.y}px`,
+            left: `${contextMenu.x}px`,
+            zIndex: 9999,
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-64 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md rounded-xl border border-slate-200/90 dark:border-slate-700/90 shadow-2xl p-1.5 text-xs select-none"
+        >
+          {contextMenu.row._type === 'ech' ? (
+            <>
+              {/* En-tête échéance */}
+              <div className="px-2.5 py-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Échéance sélectionnée
+                </div>
+                <div className="font-medium text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                  {formatDate(contextMenu.row.periode_debut)} → {formatDate(contextMenu.row.periode_fin)}
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Reste : <span className="font-semibold text-slate-700 dark:text-slate-300">{formatMontant(contextMenu.row.reste)}</span>
+                </div>
+              </div>
+
+              {/* Action 1 : Enregistrer un paiement */}
+              {contextMenu.row.reste > 0 && contextMenu.row.statut !== 'payee' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const r = contextMenu.row
+                    setContextMenu((prev) => ({ ...prev, open: false }))
+                    setDirectPaiementEch(r)
+                    setDirectPaiementOpen(true)
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors text-left font-medium"
+                >
+                  <CreditCard className="w-4 h-4 text-primary shrink-0" />
+                  <span>Enregistrer un paiement</span>
+                </button>
+              )}
+
+              {/* Action 2 : Détails de la souscription */}
+              <button
+                type="button"
+                onClick={() => {
+                  const id = contextMenu.row.id_souscription
+                  setContextMenu((prev) => ({ ...prev, open: false }))
+                  if (id) onOpenDrawerSouscription(id)
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 rounded-lg transition-colors text-left"
+              >
+                <Eye className="w-4 h-4 text-slate-500 shrink-0" />
+                <span>Détails de la souscription</span>
+              </button>
+
+              {/* Action 3 : Annuler la souscription */}
+              {contextMenu.row.statut !== 'annulee' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = contextMenu.row.id_souscription
+                    setContextMenu((prev) => ({ ...prev, open: false }))
+                    if (id && window.confirm('Êtes-vous sûr de vouloir annuler cette souscription ?')) {
+                      onPatchSouscriptionStatut?.(id, 'ANNULEE')
+                    }
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-left"
+                >
+                  <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <span>Annuler la souscription</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {/* En-tête souscription */}
+              <div className="px-2.5 py-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Souscription
+                </div>
+                <div className="font-medium text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                  {contextMenu.row.collaborateur_nom}
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  {contextMenu.row.abonnement_nom}
+                </div>
+              </div>
+
+              {/* Action 1 : Détails */}
+              <button
+                type="button"
+                onClick={() => {
+                  const id = contextMenu.row.id_souscription_abonnement
+                  setContextMenu((prev) => ({ ...prev, open: false }))
+                  if (id) onOpenDrawerSouscription(id)
+                }}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 rounded-lg transition-colors text-left font-medium"
+              >
+                <Eye className="w-4 h-4 text-slate-500 shrink-0" />
+                <span>Voir les détails</span>
+              </button>
+
+              {/* Action 2 : Annuler */}
+              {contextMenu.row.statut !== 'ANNULEE' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = contextMenu.row.id_souscription_abonnement
+                    setContextMenu((prev) => ({ ...prev, open: false }))
+                    if (id && window.confirm('Êtes-vous sûr de vouloir annuler cette souscription ?')) {
+                      onPatchSouscriptionStatut?.(id, 'ANNULEE')
+                    }
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-left"
+                >
+                  <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <span>Annuler la souscription</span>
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Modale paiement direct sur échéance ciblée ───────────── */}
+      <ModalePaiementDirect
+        echeance={directPaiementEch}
+        open={directPaiementOpen}
+        onClose={() => setDirectPaiementOpen(false)}
+        onSuccess={onRefreshAll}
+      />
     </div>
   )
 }

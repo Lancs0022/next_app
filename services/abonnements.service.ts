@@ -235,7 +235,6 @@ export async function listSouscriptions({
       echeances: {
         where: { canceled_at: null },
         orderBy: { periode_debut: 'desc' },
-        take: 1,
         select: {
           id_echeance_abonnement: true,
           periode_debut: true,
@@ -244,7 +243,12 @@ export async function listSouscriptions({
           montant: true,
           paiements: {
             where: { canceled_at: null },
-            select: { montant: true },
+            select: {
+              id_paiement_abonnement: true,
+              montant: true,
+              date_paiement: true,
+              id_transaction_financiere: true,
+            },
           },
         },
       },
@@ -263,6 +267,28 @@ export async function listSouscriptions({
 
   return {
     data: rows.map((s) => {
+      const allEchs = s.echeances.map((ech) => {
+        const montantPaye = ech.paiements.reduce((acc, p) => acc + Number(p.montant), 0)
+        return {
+          id_echeance_abonnement: ech.id_echeance_abonnement,
+          periode_debut: ech.periode_debut,
+          periode_fin: ech.periode_fin,
+          statut: ech.statut,
+          montant: Number(ech.montant),
+          montant_paye: montantPaye,
+          reste: Math.max(0, Number(ech.montant) - montantPaye),
+          date_paiement: ech.paiements[0]?.date_paiement ?? null,
+          paiements: ech.paiements.map(p => ({
+            id_paiement_abonnement: p.id_paiement_abonnement,
+            montant: Number(p.montant),
+            date_paiement: p.date_paiement,
+            id_transaction_financiere: p.id_transaction_financiere,
+          })),
+          _type: 'ech' as const,
+          id_souscription: s.id_souscription_abonnement,
+        }
+      })
+
       const echeance = s.echeances[0] ?? null
       const montantPaye = echeance
         ? echeance.paiements.reduce((acc, p) => acc + Number(p.montant), 0)
@@ -288,6 +314,7 @@ export async function listSouscriptions({
         statut:                 s.statut as SouscriptionStatut,
         canceled_at:            s.canceled_at,
         created_at:             s.created_at,
+        echeances:              allEchs,
         prochaine_echeance: echeance
           ? {
               id:            echeance.id_echeance_abonnement,

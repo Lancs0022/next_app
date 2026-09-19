@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   X, RefreshCw, ChevronDown, ChevronRight, Info,
-  AlertCircle, CheckCircle2, Clock, CreditCard, Plus, Link2,
+  AlertCircle, CheckCircle2, Clock, CreditCard, Plus, Link2, Settings,
 } from 'lucide-react'
 import api from '@/services/api'
 import Modal from '@/components/Modal/Modal'
 import { useToast } from '@/components/Toast/ToastContainer'
+import SouscriptionActionMenu, { SouscriptionActionId } from './SouscriptionActionMenu'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -146,6 +147,7 @@ export default function DrawerSouscription({ idSouscription, open, onClose, onMu
     | { type: 'confirm';  title: string; message: string; variant: 'danger'|'warning'|'primary'; onConfirm: () => Promise<void>; loading: boolean }
 
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [actionsOpen, setActionsOpen] = useState(false)
 
   // ─── Chargement ───────────────────────────────────────────────────────────────
 
@@ -306,6 +308,44 @@ export default function DrawerSouscription({ idSouscription, open, onClose, onMu
       onConfirm: async () => patchStatut(statut) })
   }
 
+  const handleMenuAction = (actionId: SouscriptionActionId) => {
+    if (!data) return
+    if (actionId === 'tarif') {
+      setModal({ type: 'tarif', form: { montant: String(data.montant) }, loading: false })
+    } else if (actionId === 'paiement') {
+      setModal({
+        type: 'paiement',
+        date: new Date().toISOString().split('T')[0],
+        loading: false,
+        lignes: echeancesPayables.map((e) => ({
+          echeance: e,
+          selected: false,
+          montant: String(Math.max(0, e.reste)),
+        })),
+      })
+    } else if (actionId === 'echeance') {
+      const today = new Date()
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      setModal({
+        type: 'echeance',
+        form: {
+          montant: String(data.montant),
+          debut: today.toISOString().split('T')[0],
+          fin: nextMonth.toISOString().split('T')[0],
+        },
+        loading: false,
+      })
+    } else if (actionId === 'suspendre') {
+      openConfirmStatut('SUSPENDUE')
+    } else if (actionId === 'reactiver') {
+      openConfirmStatut('ACTIVE')
+    } else if (actionId === 'resilier') {
+      openConfirmStatut('TERMINEE')
+    } else if (actionId === 'annuler') {
+      openConfirmStatut('ANNULEE')
+    }
+  }
+
   const runConfirm = async () => {
     if (modal?.type !== 'confirm') return
     setModal(m => m ? { ...m, loading: true } : null)
@@ -354,9 +394,35 @@ export default function DrawerSouscription({ idSouscription, open, onClose, onMu
                 <div className="h-5 w-48 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
               )}
             </div>
-            <button onClick={onClose} className="ml-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0">
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0 ml-4">
+              {canAct && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setActionsOpen((v) => !v)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-slate-300 bg-slate-50 text-slate-700 hover:text-slate-900 hover:border-slate-400 text-xs sm:text-sm font-medium transition-colors dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:border-slate-500"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>Actions</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {actionsOpen && (
+                    <SouscriptionActionMenu
+                      canPay={canPay && echeancesPayables.length > 0}
+                      isActive={isActive}
+                      isSuspendue={isSuspendue}
+                      isTerminee={isTerminee}
+                      isAnnulee={isAnnulee}
+                      onAction={handleMenuAction}
+                      onClose={() => setActionsOpen(false)}
+                    />
+                  )}
+                </div>
+              )}
+              <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0" title="Fermer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Corps */}
@@ -411,70 +477,7 @@ export default function DrawerSouscription({ idSouscription, open, onClose, onMu
                   )}
                 </SectionDrawer>
 
-                {/* ── Actions ───────────────────────────────────────────────── */}
-                {canAct && (
-                  <SectionDrawer title="Actions">
-                    <div className="flex flex-wrap gap-2">
-                      {(isActive || isSuspendue) && (
-                        <button onClick={() => setModal({ type: 'tarif', form: { montant: String(data.montant) }, loading: false })}
-                          className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                          Changer le tarif
-                        </button>
-                      )}
-                      {canPay && echeancesPayables.length > 0 && (
-                        <button onClick={() => setModal({
-                          type: 'paiement',
-                          date: new Date().toISOString().split('T')[0],
-                          loading: false,
-                          lignes: echeancesPayables.map(e => ({ echeance: e, selected: false, montant: String(Math.max(0, e.reste)) })),
-                        })}
-                          className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-strong text-white rounded-lg transition-colors inline-flex items-center gap-1.5">
-                          <CreditCard className="w-4 h-4" />
-                          Enregistrer un paiement
-                        </button>
-                      )}
-                      {(isActive || isSuspendue) && (
-                        <button onClick={() => {
-                          const today = new Date()
-                          const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-                          setModal({ type: 'echeance', form: { montant: String(data.montant), debut: today.toISOString().split('T')[0], fin: nextMonth.toISOString().split('T')[0] }, loading: false })
-                        }}
-                          className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors inline-flex items-center gap-1.5">
-                          <Plus className="w-3.5 h-3.5" />
-                          Nouvelle échéance
-                        </button>
-                      )}
-                      {isActive && (
-                        <button onClick={() => openConfirmStatut('SUSPENDUE')}
-                          className="px-3 py-1.5 text-sm border border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors">
-                          Suspendre
-                        </button>
-                      )}
-                      {isSuspendue && (
-                        <button onClick={() => openConfirmStatut('ACTIVE')}
-                          className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
-                          Réactiver
-                        </button>
-                      )}
-                      {(isActive || isSuspendue) && (
-                        <button onClick={() => openConfirmStatut('TERMINEE')}
-                          className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                          Résilier
-                        </button>
-                      )}
-                      {isTerminee && (
-                        <button onClick={() => openConfirmStatut('ACTIVE')}
-                          className="px-3 py-1.5 text-sm bg-primary hover:bg-primary-strong text-white rounded-lg transition-colors">
-                          Réactiver
-                        </button>
-                      )}
-                      <button onClick={() => openConfirmStatut('ANNULEE')}
-                        className="px-3 py-1.5 text-sm border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                        Annuler la souscription
-                      </button>
-                    </div>
-                  </SectionDrawer>
-                )}
+
 
                 {/* ── Échéances ─────────────────────────────────────────────── */}
                 <SectionDrawer title={`Échéances (${data.echeances.filter(e => !e.canceled_at).length})`}>

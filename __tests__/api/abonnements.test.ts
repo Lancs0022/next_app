@@ -137,6 +137,98 @@ async function cleanupFixture(fx: TestFixture) {
   await prisma.collaborateur.deleteMany({ where: { id_collaborateur: { in: [fx.idCollab1, fx.idCollab2] } } })
 }
 
+/**
+ * Nettoyage automatique chirurgical de TOUTES les données de test résiduelles.
+ * Supprime les collaborateurs TEST-* ou Overlap4, abonnements TEST-*,
+ * ainsi que leurs souscriptions, échéances, paiements et transactions financières.
+ */
+async function purgeAllTestArtifacts() {
+  const collabs = await prisma.collaborateur.findMany({
+    where: {
+      tenant_id: T1,
+      OR: [
+        { nom: { startsWith: 'TEST-' } },
+        { prenom: 'Overlap4' },
+      ],
+    },
+    select: { id_collaborateur: true },
+  })
+  const collabIds = collabs.map(c => c.id_collaborateur)
+
+  const abos = await prisma.abonnement.findMany({
+    where: {
+      tenant_id: T1,
+      nom: { startsWith: 'TEST-' },
+    },
+    select: { id_abonnement: true },
+  })
+  const aboIds = abos.map(a => a.id_abonnement)
+
+  if (collabIds.length === 0 && aboIds.length === 0) return
+
+  const sous = await prisma.souscriptionAbonnement.findMany({
+    where: {
+      tenant_id: T1,
+      OR: [
+        ...(collabIds.length > 0 ? [{ id_collaborateur: { in: collabIds } }] : []),
+        ...(aboIds.length > 0 ? [{ id_abonnement: { in: aboIds } }] : []),
+      ],
+    },
+    select: { id_souscription_abonnement: true },
+  })
+  const sousIds = sous.map(s => s.id_souscription_abonnement)
+
+  if (sousIds.length > 0) {
+    const echs = await prisma.echeanceAbonnement.findMany({
+      where: { id_souscription_abonnement: { in: sousIds } },
+      select: { id_echeance_abonnement: true },
+    })
+    const echIds = echs.map(e => e.id_echeance_abonnement)
+
+    if (echIds.length > 0) {
+      await prisma.paiementAbonnement.deleteMany({
+        where: { id_echeance_abonnement: { in: echIds } },
+      })
+      await prisma.echeanceAbonnement.deleteMany({
+        where: { id_echeance_abonnement: { in: echIds } },
+      })
+    }
+
+    await prisma.transactionFinanciere.deleteMany({
+      where: {
+        tenant_id: T1,
+        source_module: 'ABONNEMENT',
+        source_id: { in: sousIds },
+      },
+    })
+
+    await prisma.souscriptionAbonnement.deleteMany({
+      where: { id_souscription_abonnement: { in: sousIds } },
+    })
+  }
+
+  if (aboIds.length > 0) {
+    await prisma.abonnement.deleteMany({
+      where: { id_abonnement: { in: aboIds } },
+    })
+  }
+
+  if (collabIds.length > 0) {
+    await prisma.collaborateur.deleteMany({
+      where: { id_collaborateur: { in: collabIds } },
+    })
+  }
+}
+
+beforeAll(async () => {
+  await purgeAllTestArtifacts()
+})
+
+afterAll(async () => {
+  await purgeAllTestArtifacts()
+})
+
+
 // ══════════════════════════════════════════════════════════════════════════════
 // SUITE 1 — PAIEMENTS GROUPÉS
 // Teste l'architecture N PaiementAbonnement → 1 TransactionFinanciere
@@ -596,9 +688,15 @@ describe('Annulation groupe de paiement', () => {
 
 describe('Machine d\'état souscriptions', () => {
   let fx: TestFixture
+  const createdCollabIds: number[] = []
 
   beforeAll(async () => { fx = await createTestFixture('ETAT') })
-  afterAll(() => cleanupFixture(fx))
+  afterAll(async () => {
+    if (createdCollabIds.length > 0) {
+      await prisma.collaborateur.deleteMany({ where: { id_collaborateur: { in: createdCollabIds } } })
+    }
+    await cleanupFixture(fx)
+  })
 
   /** Crée un collaborateur isolé et une souscription via API, retourne { idSous, idCollab } */
   async function creerSousIsolé(opts: {
@@ -611,6 +709,7 @@ describe('Machine d\'état souscriptions', () => {
     const collab = await prisma.collaborateur.create({
       data: { tenant_id: T1, nom: `TEST-ETAT-ISO-${Date.now()}-${Math.random().toString(36).slice(2)}`, statut: 'actif' },
     })
+    createdCollabIds.push(collab.id_collaborateur)
     const res = await sousPost(
       req('http://localhost/api/souscriptions-abonnements', {
         id_abonnement:    fx.idOffre,

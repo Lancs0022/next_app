@@ -235,6 +235,8 @@ export default function AbonnementsPage() {
                   setDrawerSousId(id)
                   setDrawerSousOpen(true)
                 }}
+                onPatchSouscriptionStatut={data.patchSouscriptionStatut}
+                onRefreshAll={data.refreshAll}
               />
             ),
           },

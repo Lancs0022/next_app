@@ -48,6 +48,8 @@ export interface ResponsiveDataTableProps<T = any> {
   onSort?: (config: SortConfig) => void
   sortConfig?: SortConfig
   onRowClick?: (row: T) => void
+  onRowDoubleClick?: (row: T) => void
+  onRowContextMenu?: (row: T, e: React.MouseEvent) => void
   onFiltersChange?: (filters: Record<string, FilterState>) => void
 
   // ── Mode serveur / client explicite ──
@@ -202,6 +204,8 @@ const ResponsiveDataTable = <T extends Record<string, any>>({
   onSort,
   sortConfig,
   onRowClick,
+  onRowDoubleClick,
+  onRowContextMenu,
   onFiltersChange,
   serverSide,
   instanceId,
@@ -507,13 +511,28 @@ const ResponsiveDataTable = <T extends Record<string, any>>({
 
   const handleRowContextMenu = (e: React.MouseEvent, row: T, rowIndex: number) => {
     e.preventDefault()
+    if (onRowContextMenu) {
+      onRowContextMenu(row, e)
+      return
+    }
     openActionsMenu(row, rowIndex, e.clientX, e.clientY)
   }
 
   const handleRowTouchStart = (e: React.TouchEvent, row: T, rowIndex: number) => {
+    const touch = e.touches[0]
+    const clientX = touch ? touch.clientX : 0
+    const clientY = touch ? touch.clientY : 0
     longPressTimerRef.current = setTimeout(() => {
-      const touch = e.touches[0]
-      openActionsMenu(row, rowIndex, touch.clientX, touch.clientY)
+      if (onRowContextMenu) {
+        onRowContextMenu(row, {
+          clientX,
+          clientY,
+          preventDefault: () => {},
+          stopPropagation: () => {},
+        } as unknown as React.MouseEvent)
+        return
+      }
+      openActionsMenu(row, rowIndex, clientX, clientY)
     }, 500)
   }
 
@@ -666,12 +685,19 @@ const ResponsiveDataTable = <T extends Record<string, any>>({
           depth > 0
             ? 'mt-2 rounded-lg bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-xs'
             : isGroup ? 'bg-slate-50/50 dark:bg-slate-800/60' : ''
-        } ${onRowClick ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/5' : ''} ${
+        } ${(onRowClick || onRowDoubleClick) ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/5' : ''} ${
           hoveredRow === rowKey ? 'bg-slate-50 dark:bg-slate-700/50' : ''
         } ${customClass}`}
         onClick={() => {
           if (expandOnRowClick && isGroup) toggleRowExpansion(rowKey)
           else onRowClick?.(row)
+        }}
+        onDoubleClick={() => onRowDoubleClick?.(row)}
+        onContextMenu={(e) => {
+          if (onRowContextMenu) {
+            e.preventDefault()
+            onRowContextMenu(row, e)
+          }
         }}
         onTouchStart={(e) => handleRowTouchStart(e, row, rowIndex)}
         onTouchEnd={handleRowTouchEnd}
@@ -774,12 +800,13 @@ const ResponsiveDataTable = <T extends Record<string, any>>({
         {/* Ligne principale ou sous-ligne */}
         <tr
           className={`transition-colors ${customClass || defaultClass} ${
-            onRowClick ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/5' : ''
+            (onRowClick || onRowDoubleClick) ? 'cursor-pointer hover:bg-primary/5 dark:hover:bg-primary/5' : ''
           } ${hoveredRow === rowKey ? 'bg-slate-100/70 dark:bg-slate-700/60' : ''}`}
           onClick={() => {
             if (expandOnRowClick && isGroup) toggleRowExpansion(rowKey)
             else onRowClick?.(row)
           }}
+          onDoubleClick={() => onRowDoubleClick?.(row)}
           onContextMenu={(e) => handleRowContextMenu(e, row, rowIndex)}
           onMouseEnter={() => setHoveredRow(rowKey)}
           onMouseLeave={() => setHoveredRow(null)}

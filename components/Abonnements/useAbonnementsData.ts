@@ -189,6 +189,20 @@ export function useAbonnementsData() {
     [fetchOffres, showToast]
   )
 
+  const patchSouscriptionStatut = useCallback(
+    async (id: number, statut: 'ACTIVE' | 'SUSPENDUE' | 'TERMINEE' | 'ANNULEE') => {
+      try {
+        await api.patch(`/souscriptions-abonnements/${id}/statut`, { statut })
+        showToast(`Statut souscription mis à jour : ${statut}`, 'success')
+        await refreshAll()
+      } catch (e: unknown) {
+        const err = e as { response?: { data?: { error?: string } }; message?: string }
+        showToast(err?.response?.data?.error ?? err?.message ?? 'Erreur mise à jour statut', 'error')
+      }
+    },
+    [refreshAll, showToast]
+  )
+
   // ── Dérivation données Offres triées & paginées ─────────────────────────────
   const { paginatedOffres, totalOffresCount } = useMemo(() => {
     let d = [...offres]
@@ -234,11 +248,19 @@ export function useAbonnementsData() {
     }
     if (filtreDateDebut?.dateMin) {
       const min = new Date(filtreDateDebut.dateMin)
-      filtered = filtered.filter((s) => new Date(s.date_debut) >= min)
+      const target = filtreDateDebut.target || 'date_debut'
+      filtered = filtered.filter((s) => {
+        const raw = target === 'date_fin' ? s.date_fin : target === 'created_at' ? s.created_at : s.date_debut
+        return raw ? new Date(raw) >= min : false
+      })
     }
     if (filtreDateDebut?.dateMax) {
       const max = new Date(filtreDateDebut.dateMax)
-      filtered = filtered.filter((s) => new Date(s.date_debut) <= max)
+      const target = filtreDateDebut.target || 'date_debut'
+      filtered = filtered.filter((s) => {
+        const raw = target === 'date_fin' ? s.date_fin : target === 'created_at' ? s.created_at : s.date_debut
+        return raw ? new Date(raw) <= max : false
+      })
     }
 
     // 3. Tri
@@ -255,7 +277,10 @@ export function useAbonnementsData() {
 
     // 4. Enrichisseur de souscription avec entête et limitation à 5 échéances
     const enrichSous = (s: Souscription): SouscriptionEnriched => {
-      const cachedEchs = echeancesBySous[s.id_souscription_abonnement]
+      const cachedEchs =
+        echeancesBySous[s.id_souscription_abonnement] && echeancesBySous[s.id_souscription_abonnement].length > 0
+          ? echeancesBySous[s.id_souscription_abonnement]
+          : ((s as any).echeances as EcheanceItem[] | undefined) ?? []
       let echChildren: EcheanceChildRow[] = []
 
       if (cachedEchs && cachedEchs.length > 0) {
@@ -463,6 +488,7 @@ export function useAbonnementsData() {
     fetchSouscriptions,
     fetchEcheancesForSouscription,
     toggleShowAllEcheances,
+    patchSouscriptionStatut,
 
     // Paiements
     paiements,
