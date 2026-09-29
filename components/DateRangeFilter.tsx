@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, ReactNode } from 'react'
 import Modal from '@/components/Modal/Modal'
 
-interface DateFilterValue {
+export interface DateFilterValue {
   target?: string
   mode?: string
   offset?: string

@@ -62,5 +62,8 @@
     "@prisma/client@6.12.0": true,
     "prisma@7.9.1": true,
     "@prisma/engines@7.9.1": true
+  },
+  "prisma": {
+  "seed": "tsx prisma/seed.ts && tsx prisma/seed-abonnements.ts"
   }
 }

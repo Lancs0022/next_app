@@ -14,6 +14,8 @@ function seedClientUuid(kind: 'livraison' | 'vente', key: string): string {
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`
 }
 
+
+
 // ─── Helpers stock ─────────────────────────────────────────────────────────────
 
 async function applyStockMouvement(
@@ -141,19 +143,22 @@ async function main() {
   const operationalDomains = [
     'DASHBOARD','STOCK','VENTES','ABO','COLLAB','FINANCE','PRODUITS',
     'COMMANDES','LIVRAISONS','POINTS_DE_VENTE','ENCAISSEMENTS',
+    'UNITES',
   ]
   const matrix: { role: string; domain: string; r: boolean; w: boolean; d: boolean; m: boolean }[] = [
     ...domains.map(d => ({ role: 'super_admin', domain: d.code, r: true, w: true, d: true, m: true })),
     ...domains.map(d => ({
       role: 'admin', domain: d.code,
-      r: !['UNITES','UTILISATEURS','RBAC'].includes(d.code),
+      r: !['UTILISATEURS','RBAC'].includes(d.code),
       w: !['UNITES','UTILISATEURS','RBAC','PARAM'].includes(d.code),
       d: !['UNITES','UTILISATEURS','RBAC','PARAM'].includes(d.code),
       m: !['UNITES','UTILISATEURS','RBAC','PARAM'].includes(d.code),
     })),
     ...operationalDomains.map(d => ({ role: 'employe', domain: d, r: true, w: true, d: false, m: false })),
     { role: 'client',        domain: 'DASHBOARD', r: false, w: false, d: false, m: false },
+    { role: 'client',        domain: 'UNITES',    r: true,  w: false, d: false, m: false },
     { role: 'collaborateur', domain: 'DASHBOARD', r: true,  w: false, d: false, m: false },
+    { role: 'collaborateur', domain: 'UNITES',    r: true,  w: false, d: false, m: false },
   ]
   for (const e of matrix) {
     const role   = await prisma.role.findUnique({ where: { code: e.role } })
@@ -161,7 +166,7 @@ async function main() {
     if (role && domain) {
       await prisma.roleAccessMatrix.upsert({
         where: { id_role_id_domain: { id_role: role.id_role, id_domain: domain.id_domain } },
-        update: {},
+        update: { can_read: e.r, can_write: e.w, can_delete: e.d, can_manage: e.m },
         create: { id_role: role.id_role, id_domain: domain.id_domain, can_read: e.r, can_write: e.w, can_delete: e.d, can_manage: e.m },
       })
     }

@@ -61,6 +61,7 @@ export interface EcheanceItem {
 export interface EcheanceHeaderRow {
   id: string
   _type: 'ech_header'
+  _isHeader?: boolean
   id_souscription: number
 }
 

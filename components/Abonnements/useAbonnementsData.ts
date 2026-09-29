@@ -288,6 +288,7 @@ export function useAbonnementsData() {
         const headerRow: EcheanceChildRow = {
           id: `ech_hdr_${s.id_souscription_abonnement}`,
           _type: 'ech_header',
+          _isHeader: true,
           id_souscription: s.id_souscription_abonnement,
         }
 
@@ -312,6 +313,7 @@ export function useAbonnementsData() {
           {
             id: `ech_hdr_${s.id_souscription_abonnement}`,
             _type: 'ech_header',
+            _isHeader: true,
             id_souscription: s.id_souscription_abonnement,
           },
           {

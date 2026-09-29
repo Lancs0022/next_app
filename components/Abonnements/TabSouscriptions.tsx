@@ -769,6 +769,7 @@ export default function TabSouscriptions({
             onSort={onSort}
             sortConfig={sortConfig}
             childrenField="children"
+            isHeaderRow={(row: any) => row?._type === 'ech_header' || Boolean(row?._isHeader)}
             rowClassName={(row) => {
               if (row._type === 'collab') {
                 return 'bg-[#eef3f9] hover:bg-[#e4ecf8] dark:bg-slate-800/90 dark:hover:bg-slate-800 border-l-[3px] border-l-blue-500'

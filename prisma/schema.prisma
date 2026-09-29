@@ -1,12 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
 }
-
-// ==================== AUTH / RBAC ====================
 
 model Utilisateur {
   id_utilisateur Int                  @id @default(autoincrement())
@@ -29,8 +28,8 @@ model AccessDomain {
   code       String               @unique
   label      String
   actif      Boolean              @default(true)
-  overrides  UserAccessOverride[]
   roleMatrix RoleAccessMatrix[]
+  overrides  UserAccessOverride[]
 
   @@map("access_domain")
 }
@@ -42,8 +41,8 @@ model UserAccessOverride {
   can_write      Boolean?
   can_delete     Boolean?
   can_manage     Boolean?
-  utilisateur    Utilisateur  @relation(fields: [id_utilisateur], references: [id_utilisateur])
   domain         AccessDomain @relation(fields: [id_domain], references: [id_domain])
+  utilisateur    Utilisateur  @relation(fields: [id_utilisateur], references: [id_utilisateur])
 
   @@id([id_utilisateur, id_domain])
   @@map("user_access_override")
@@ -66,16 +65,12 @@ model RoleAccessMatrix {
   can_write  Boolean      @default(false)
   can_delete Boolean      @default(false)
   can_manage Boolean      @default(false)
-  role       Role         @relation(fields: [id_role], references: [id_role])
   domain     AccessDomain @relation(fields: [id_domain], references: [id_domain])
+  role       Role         @relation(fields: [id_role], references: [id_role])
 
   @@id([id_role, id_domain])
   @@map("role_access_matrix")
 }
-
-// ==================== STOCK ====================
-// stock_actuel = photo (current snapshot, source of truth)
-// stock_mouvement = film (append-only journal)
 
 model StockActuel {
   id                Int      @id @default(autoincrement())
@@ -93,22 +88,22 @@ model StockActuel {
 }
 
 model StockSnapshot {
-  id_snapshot    Int             @id @default(autoincrement())
-  tenant_id      Int
-  id_pdv         Int
-  periode        String
-  created_at     DateTime        @default(now())
-  lignes         SnapshotLigne[]
+  id_snapshot Int             @id @default(autoincrement())
+  tenant_id   Int
+  id_pdv      Int
+  periode     String
+  created_at  DateTime        @default(now())
+  lignes      SnapshotLigne[]
 
   @@map("stock_snapshot")
 }
 
 model SnapshotLigne {
-  id_ligne       Int           @id @default(autoincrement())
-  id_snapshot    Int
-  id_produit     Int
-  quantite       Decimal       @db.Decimal(10, 2)
-  snapshot       StockSnapshot @relation(fields: [id_snapshot], references: [id_snapshot])
+  id_ligne    Int           @id @default(autoincrement())
+  id_snapshot Int
+  id_produit  Int
+  quantite    Decimal       @db.Decimal(10, 2)
+  snapshot    StockSnapshot @relation(fields: [id_snapshot], references: [id_snapshot])
 
   @@map("snapshot_ligne")
 }
@@ -117,11 +112,11 @@ model StockMouvement {
   id_stock_mouvement Int      @id @default(autoincrement())
   tenant_id          Int
   id_lot             Int
-  type               String   // entree | sortie | reservation | annulation_reservation | ajustement | transfert
+  type               String
   quantite           Decimal  @db.Decimal(12, 3)
   before_qty         Decimal? @db.Decimal(12, 3)
   after_qty          Decimal? @db.Decimal(12, 3)
-  source_type        String   // VENTE | LIVRAISON | AJUSTEMENT | TRANSFERT | RETOUR
+  source_type        String
   source_id          Int?
   date_mouvement     DateTime @default(now())
   created_at         DateTime @default(now())
@@ -131,40 +126,35 @@ model StockMouvement {
 }
 
 model StockTransfert {
-  id_stock_transfert          Int       @id @default(autoincrement())
-  id_point_vente_source       Int
-  id_point_vente_destination  Int
-  id_utilisateur              Int
-  date_transfert              DateTime  @default(now())
-  commentaire                 String?
-  created_at                  DateTime  @default(now())
-  created_by                  Int?
-  updated_at                  DateTime?
-  updated_by                  Int?
-  deleted_at                  DateTime?
+  id_stock_transfert         Int       @id @default(autoincrement())
+  id_point_vente_source      Int
+  id_point_vente_destination Int
+  id_utilisateur             Int
+  date_transfert             DateTime  @default(now())
+  commentaire                String?
+  created_at                 DateTime  @default(now())
+  created_by                 Int?
+  updated_at                 DateTime?
+  updated_by                 Int?
+  deleted_at                 DateTime?
 
   @@map("stock_transfert")
 }
 
-// ==================== UNITÉS DE MESURE ====================
-
 model UniteDeMesure {
-  id_unite    Int      @id @default(autoincrement())
+  id_unite    Int                @id @default(autoincrement())
   tenant_id   Int
-  code        String   // "U", "KG", "G", "L", "ML", "M", "CM"
-  label       String   // "Unité", "Kilogramme", …
-  est_decimal Boolean  @default(false)
-  precision   Int      @default(0) // nb de décimales à afficher
-  actif       Boolean  @default(true)
-  created_at  DateTime @default(now())
-
+  code        String
+  label       String
+  est_decimal Boolean            @default(false)
+  precision   Int                @default(0)
+  actif       Boolean            @default(true)
+  created_at  DateTime           @default(now())
   produits    ProduitCatalogue[]
 
   @@unique([tenant_id, code])
   @@map("unite_de_mesure")
 }
-
-// ==================== PRODUITS ====================
 
 model ProduitCatalogue {
   id_produit       Int            @id @default(autoincrement())
@@ -179,21 +169,17 @@ model ProduitCatalogue {
   id_unite         Int?
   seuil_alerte     Decimal?       @db.Decimal(10, 3)
   image_url        String?
-  statut           String         @default("actif") // actif | archive
+  statut           String         @default("actif")
   created_by       Int?
   modified_by      Int?
   created_at       DateTime       @default(now())
   updated_at       DateTime       @updatedAt
   modified_at      DateTime?
   deleted_at       DateTime?
-
   unite_mesure     UniteDeMesure? @relation(fields: [id_unite], references: [id_unite])
-  lots             LivraisonItem[]
 
   @@map("produit_catalogue")
 }
-
-// ==================== COLLABORATEURS ====================
 
 model Collaborateur {
   id_collaborateur Int      @id @default(autoincrement())
@@ -204,8 +190,8 @@ model Collaborateur {
   telephone        String?
   poste            String?
   adresse          String?
-  statut           String   @default("actif") // actif | archive
-  client_uuid      String?  // idempotence key for offline-first sync
+  statut           String   @default("actif")
+  client_uuid      String?
   date_adhesion    DateTime @default(now())
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
@@ -214,28 +200,24 @@ model Collaborateur {
   @@map("collaborateur")
 }
 
-// ==================== POINTS DE VENTE ====================
-
 model PointDeVente {
-  id_pdv          Int       @id @default(autoincrement())
-  tenant_id       Int
-  nom             String
-  quartier        String?
-  ville           String?
-  adresse         String?
-  telephone       String?
-  email           String?
-  responsable_id  Int?
-  statut          String    @default("actif") // actif | ferme | archive
-  date_ouverture  DateTime?
-  date_fermeture  DateTime?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  id_pdv         Int       @id @default(autoincrement())
+  tenant_id      Int
+  nom            String
+  quartier       String?
+  ville          String?
+  adresse        String?
+  telephone      String?
+  email          String?
+  responsable_id Int?
+  statut         String    @default("actif")
+  date_ouverture DateTime?
+  date_fermeture DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
   @@map("point_de_vente")
 }
-
-// ==================== LIVRAISONS (header + lines) ====================
 
 model Livraison {
   id_livraison     Int             @id @default(autoincrement())
@@ -254,98 +236,91 @@ model Livraison {
 }
 
 model LivraisonItem {
-  id_lot             Int       @id @default(autoincrement())
-  tenant_id          Int
-  id_produit         Int
-  id_livraison       Int
-  id_pdv             Int
-  prix_initial       Decimal   @db.Decimal(10, 2)
-  marge              Decimal   @db.Decimal(10, 2)
-  quantite_initiale  Decimal   @db.Decimal(12, 3)
-  quantite_remboursee Decimal  @default(0) @db.Decimal(12, 3)
-  id_lot_parent      Int?
-  statut             String    @default("en_stock") // en_stock | vendu | archive
-  date_livraison     DateTime  @default(now())
-  created_by         Int?
-  modified_by        Int?
-  deleted_at         DateTime?
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
-  livraison          Livraison        @relation(fields: [id_livraison], references: [id_livraison])
-  produit_catalogue  ProduitCatalogue @relation(fields: [id_produit], references: [id_produit])
+  id_lot              Int       @id @default(autoincrement())
+  tenant_id           Int
+  id_produit          Int
+  id_livraison        Int
+  id_pdv              Int
+  prix_initial        Decimal   @db.Decimal(10, 2)
+  marge               Decimal   @db.Decimal(10, 2)
+  quantite_initiale   Decimal   @db.Decimal(12, 3)
+  quantite_remboursee Decimal   @default(0) @db.Decimal(12, 3)
+  id_lot_parent       Int?
+  statut              String    @default("en_stock")
+  date_livraison      DateTime  @default(now())
+  created_by          Int?
+  modified_by         Int?
+  deleted_at          DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  livraison           Livraison @relation(fields: [id_livraison], references: [id_livraison])
 
   @@map("livraison_item")
 }
 
-// ==================== COMMANDES ====================
-
 model Commande {
-  id_commande    Int             @id @default(autoincrement())
-  id_client      Int
-  id_pdv         Int
-  cree_par_id    Int
-  statut         String          @default("reservee") // reservee | confirmee | annulee
-  date_commande  DateTime        @default(now())
-  created_at     DateTime        @default(now())
-  updated_at     DateTime        @updatedAt
-  lignes         CommandeLigne[]
+  id_commande   Int             @id @default(autoincrement())
+  id_client     Int
+  id_pdv        Int
+  cree_par_id   Int
+  statut        String          @default("reservee")
+  date_commande DateTime        @default(now())
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+  lignes        CommandeLigne[]
 
   @@map("commande")
 }
 
 model CommandeLigne {
-  id                 Int      @id @default(autoincrement())
-  id_commande        Int
-  id_lot             Int
-  id_collaborateur   Int
-  quantite_reservee  Decimal  @db.Decimal(12, 3)
-  prix_initial       Decimal  @db.Decimal(10, 2)
-  marge              Decimal  @db.Decimal(10, 2)
-  created_at         DateTime @default(now())
-  commande           Commande @relation(fields: [id_commande], references: [id_commande])
+  id                Int      @id @default(autoincrement())
+  id_commande       Int
+  id_lot            Int
+  id_collaborateur  Int
+  quantite_reservee Decimal  @db.Decimal(12, 3)
+  prix_initial      Decimal  @db.Decimal(10, 2)
+  marge             Decimal  @db.Decimal(10, 2)
+  created_at        DateTime @default(now())
+  commande          Commande @relation(fields: [id_commande], references: [id_commande])
 
   @@map("commande_ligne")
 }
 
-// ==================== CLIENTS ====================
-
 model Client {
-  id_client         Int      @id @default(autoincrement())
-  tenant_id         Int
-  nom               String
-  prenom            String?
-  email             String?
-  telephone         String?
-  adresse           String?
-  date_inscription  DateTime @default(now())
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id_client        Int      @id @default(autoincrement())
+  tenant_id        Int
+  nom              String
+  prenom           String?
+  email            String?
+  telephone        String?
+  adresse          String?
+  date_inscription DateTime @default(now())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   @@map("client")
 }
 
-// ==================== VENTES ====================
-
 model Vente {
-  id_vente             Int            @id @default(autoincrement())
-  tenant_id            Int
-  id_commande          Int?
-  id_client            Int
-  id_point_vente       Int
-  client_uuid          String?
-  date_vente           DateTime       @default(now())
+  id_vente                Int            @id @default(autoincrement())
+  tenant_id               Int
+  id_commande             Int?
+  id_client               Int
+  id_point_vente          Int
+  client_uuid             String?
+  date_vente              DateTime       @default(now())
   enregistre_par_admin_id Int
-  id_utilisateur       Int?
-  statut               String         @default("payee") // en_attente_paiement | payee | annulee | retournee
-  montant_ht           Decimal?       @db.Decimal(15, 2)
-  montant_tva          Decimal?       @default(0) @db.Decimal(15, 2)
-  montant_marge        Decimal?       @db.Decimal(15, 2)
-  montant_total        Decimal?       @db.Decimal(15, 2)
-  deleted              Boolean        @default(false)
-  deleted_at           DateTime?
-  raison_suppression   String?
-  created_at           DateTime       @default(now())
-  articles             VenteArticle[]
+  id_utilisateur          Int?
+  statut                  String         @default("payee")
+  montant_ht              Decimal?       @db.Decimal(15, 2)
+  montant_tva             Decimal?       @default(0) @db.Decimal(15, 2)
+  montant_marge           Decimal?       @db.Decimal(15, 2)
+  montant_total           Decimal?       @db.Decimal(15, 2)
+  deleted                 Boolean        @default(false)
+  deleted_at              DateTime?
+  raison_suppression      String?
+  created_at              DateTime       @default(now())
+  articles                VenteArticle[]
 
   @@unique([tenant_id, client_uuid])
   @@map("vente")
@@ -374,14 +349,12 @@ model VenteArticle {
   @@map("vente_article")
 }
 
-// ==================== ENCAISSEMENTS ====================
-
 model Encaissement {
   id_encaissement   Int      @id @default(autoincrement())
   tenant_id         Int
   id_vente          Int
   montant           Decimal  @db.Decimal(15, 2)
-  mode              String   @default("cash") // cash | mobile_money | carte | virement | autre
+  mode              String   @default("cash")
   reference         String?
   date_encaissement DateTime @default(now())
   cree_par_id       Int
@@ -389,84 +362,63 @@ model Encaissement {
   @@map("encaissement")
 }
 
-// ==================== FINANCE ====================
-
 model TransactionFinanciere {
-  id_transaction_financiere Int      @id @default(autoincrement())
+  id_transaction_financiere Int                  @id @default(autoincrement())
   tenant_id                 Int
-  type                      String   // IN | OUT
-  montant                   Decimal  @db.Decimal(15, 2)
-  date_transaction          DateTime @default(now())
+  type                      String
+  montant                   Decimal              @db.Decimal(15, 2)
+  date_transaction          DateTime             @default(now())
   id_categorie_financiere   Int
   description               String?
   source_module             String
   source_id                 Int?
-  created_at                DateTime @default(now())
+  created_at                DateTime             @default(now())
   created_by                Int
+  paiement_abonnement       PaiementAbonnement[]
 
   @@map("transaction_financiere")
 }
 
 model FinancialCategory {
-  id_category  Int      @id @default(autoincrement())
-  tenant_id    Int
-  name         String
-  type         String
-  actif        Boolean  @default(true)
-  created_at   DateTime @default(now())
+  id_category Int      @id @default(autoincrement())
+  tenant_id   Int
+  name        String
+  type        String
+  actif       Boolean  @default(true)
+  created_at  DateTime @default(now())
 
   @@map("financial_category")
 }
-
-// ==================== ABONNEMENTS ====================
-//
-// Architecture en 4 couches :
-//
-//   Abonnement              → offre commerciale / catalogue
-//       └── SouscriptionAbonnement  → relation Collaborateur ↔ Offre (active, suspendue, terminée ou annulée)
-//               └── EcheanceAbonnement  → obligation financière d'une période
-//                       └── PaiementAbonnement  → encaissement réel
-//                               └── TransactionFinanciere  → journal financier
-//
-// Règles fondamentales :
-//   - Abonnement.montant              = prix catalogue actuel (évolutif, ne rétroagit jamais)
-//   - SouscriptionAbonnement.montant  = tarif applicable actuellement à ce collaborateur
-//   - EcheanceAbonnement.montant      = snapshot figé du montant dû pour la période
-//   - PaiementAbonnement.montant      = encaissé réel, indépendant de l'échéance
-//
-// Annulation : canceled_at / canceled_by — jamais de suppression physique.
 
 /// Offre commerciale d'abonnement proposée par PEJAA.
 /// Abonnement.montant est le prix catalogue actuel — sa modification ne rétroagit
 /// jamais sur les SouscriptionAbonnement, EcheanceAbonnement ou PaiementAbonnement existants.
 ///
 /// Cycle de vie du statut :
-///   ACTIVE   → les nouvelles souscriptions sont autorisées
-///   INACTIVE → aucune nouvelle souscription, les souscriptions existantes continuent
-///   ARCHIVED → offre conservée uniquement pour l'historique
+/// ACTIVE   → les nouvelles souscriptions sont autorisées
+/// INACTIVE → aucune nouvelle souscription, les souscriptions existantes continuent
+/// ARCHIVED → offre conservée uniquement pour l'historique
 ///
 /// Contrainte de suppression physique :
-///   - interdit si au moins une SouscriptionAbonnement existe (même annulée)
-///   - autorisé uniquement si aucune souscription n'a jamais existé
-///   - désactiver une offre ne doit JAMAIS annuler automatiquement les souscriptions existantes
+/// - interdit si au moins une SouscriptionAbonnement existe (même annulée)
+/// - autorisé uniquement si aucune souscription n'a jamais existé
+/// - désactiver une offre ne doit JAMAIS annuler automatiquement les souscriptions existantes
 model Abonnement {
-  id_abonnement  Int                       @id @default(autoincrement())
-  tenant_id      Int
-  nom            String
-  description    String?
+  id_abonnement Int                      @id @default(autoincrement())
+  tenant_id     Int
+  nom           String
+  description   String?
   /// Prix catalogue actuel de l'offre. Évolutif — ne jamais utiliser pour reconstruire l'historique.
-  montant        Decimal                   @db.Decimal(10, 2)
+  montant       Decimal                  @db.Decimal(10, 2)
   /// mensuel | trimestriel | annuel | ponctuel
-  periodicite    String
+  periodicite   String
   /// ACTIVE | INACTIVE | ARCHIVED
-  statut         String                    @default("ACTIVE")
-
-  created_by     Int?
-  created_at     DateTime                  @default(now())
-  modified_by    Int?
-  modified_at    DateTime?
-
-  souscriptions  SouscriptionAbonnement[]
+  statut        String                   @default("ACTIVE")
+  created_by    Int?
+  created_at    DateTime                 @default(now())
+  modified_by   Int?
+  modified_at   DateTime?
+  souscriptions SouscriptionAbonnement[]
 
   @@map("abonnement")
 }
@@ -482,43 +434,41 @@ model Abonnement {
 /// Les montants historiques sont portés par EcheanceAbonnement.montant.
 ///
 /// Cycle de vie du statut :
-///   ACTIVE    → souscription en cours, génération d'échéances autorisée
-///   SUSPENDUE → temporairement inactive, pas de nouvelles échéances
-///   TERMINEE  → arrivée à date_fin, historique conservé
-///   ANNULEE   → annulation métier explicite (canceled_at renseigné)
+/// ACTIVE    → souscription en cours, génération d'échéances autorisée
+/// SUSPENDUE → temporairement inactive, pas de nouvelles échéances
+/// TERMINEE  → arrivée à date_fin, historique conservé
+/// ANNULEE   → annulation métier explicite (canceled_at renseigné)
 ///
 /// Une migration commerciale (changement d'offre ou de tarif structurant)
 /// se représente comme : ancienne souscription date_fin → nouvelle souscription.
 /// Ne jamais réécrire id_abonnement ou montant sur une souscription existante.
 model SouscriptionAbonnement {
-  id_souscription_abonnement  Int                    @id @default(autoincrement())
-  tenant_id                   Int
-  id_abonnement               Int
-  id_collaborateur            Int
-
+  id_souscription_abonnement Int                  @id @default(autoincrement())
+  tenant_id                  Int
+  id_abonnement              Int
+  id_collaborateur           Int
   /// Tarif actuellement applicable à ce collaborateur.
   /// Peut différer du catalogue. Utilisé pour générer les prochaines échéances.
-  montant                     Decimal                @db.Decimal(10, 2)
-
-  renouvellement_auto         Boolean                @default(true)
-  date_debut                  DateTime
-  date_fin                    DateTime?
-
+  montant                    Decimal              @db.Decimal(10, 2)
+  renouvellement_auto        Boolean              @default(true)
+  date_debut                 DateTime
+  date_fin                   DateTime?
   /// ACTIVE | SUSPENDUE | TERMINEE | ANNULEE
-  statut                      String                 @default("ACTIVE")
-
+  statut                     String               @default("ACTIVE")
   /// Renseigner pour annuler — ne jamais supprimer physiquement.
-  canceled_at                 DateTime?
-  canceled_by                 Int?
+  canceled_at                DateTime?
+  canceled_by                Int?
+  created_by                 Int?
+  created_at                 DateTime             @default(now())
+  modified_by                Int?
+  modified_at                DateTime?
+  echeances                  EcheanceAbonnement[]
+  abonnement                 Abonnement           @relation(fields: [id_abonnement], references: [id_abonnement])
 
-  created_by                  Int?
-  created_at                  DateTime               @default(now())
-  modified_by                 Int?
-  modified_at                 DateTime?
-
-  abonnement                  Abonnement             @relation(fields: [id_abonnement], references: [id_abonnement])
-  echeances                   EcheanceAbonnement[]
-
+  @@index([canceled_at], map: "idx_souscription_abonnement_canceled", where: raw("(canceled_at IS NULL)"))
+  @@index([id_abonnement], map: "idx_souscription_abonnement_id_abonnement")
+  @@index([id_collaborateur], map: "idx_souscription_abonnement_id_collaborateur")
+  @@index([statut], map: "idx_souscription_abonnement_statut")
   @@map("souscription_abonnement")
 }
 
@@ -530,91 +480,83 @@ model SouscriptionAbonnement {
 ///
 /// statut : en_attente | partiellement_payee | payee | annulee
 model EcheanceAbonnement {
-  id_echeance_abonnement     Int                      @id @default(autoincrement())
+  id_echeance_abonnement     Int                    @id @default(autoincrement())
   tenant_id                  Int
   id_souscription_abonnement Int
-
   /// Snapshot figé du montant dû pour cette période. Jamais recalculé après création.
-  montant                    Decimal                  @db.Decimal(10, 2)
-
+  montant                    Decimal                @db.Decimal(10, 2)
   periode_debut              DateTime
   periode_fin                DateTime
-
   /// en_attente | partiellement_payee | payee | annulee
-  statut                     String                   @default("en_attente")
-
+  statut                     String                 @default("en_attente")
   /// Renseigner pour annuler — ne jamais supprimer physiquement.
   canceled_at                DateTime?
   canceled_by                Int?
-
   created_by                 Int?
-  created_at                 DateTime                 @default(now())
+  created_at                 DateTime               @default(now())
   modified_by                Int?
   modified_at                DateTime?
-
-  souscription               SouscriptionAbonnement   @relation(fields: [id_souscription_abonnement], references: [id_souscription_abonnement])
+  souscription               SouscriptionAbonnement @relation(fields: [id_souscription_abonnement], references: [id_souscription_abonnement])
   paiements                  PaiementAbonnement[]
 
-  /// Contrainte d'idempotence : une même souscription ne peut avoir qu'une seule échéance
-  /// par date de début. Protège le job de renouvellement contre les doublons.
-  @@unique([id_souscription_abonnement, periode_debut])
+  @@unique([id_souscription_abonnement, periode_debut], map: "uq_echeance_periode")
+  @@index([canceled_at], map: "idx_echeance_abonnement_canceled", where: raw("(canceled_at IS NULL)"))
+  @@index([id_souscription_abonnement], map: "idx_echeance_abonnement_id_souscription")
+  @@index([statut], map: "idx_echeance_abonnement_statut")
   @@map("echeance_abonnement")
 }
 
 /// Encaissement réel pour une échéance.
 ///
 /// montant est indépendant de EcheanceAbonnement.montant :
-///   paiement partiel, multiple, ou en erreur sont valides — excédent interdit en V1.
+/// paiement partiel, multiple, ou en erreur sont valides — excédent interdit en V1.
 /// Un paiement ne doit jamais être rattaché directement à Abonnement ou SouscriptionAbonnement —
 /// il appartient obligatoirement à une EcheanceAbonnement.
 ///
 /// Paiement groupé : plusieurs PaiementAbonnement partagent le même id_transaction_financiere.
 /// Dans ce cas : N lignes PaiementAbonnement → 1 seule TransactionFinanciere(IN).
-///   source_module = 'ABONNEMENT'
-///   source_id     = id_souscription_abonnement
+/// source_module = 'ABONNEMENT'
+/// source_id     = id_souscription_abonnement
 ///
 /// Annulation : canceled_at / canceled_by — ne jamais supprimer physiquement.
 /// L'annulation se fait au niveau du groupe (id_transaction_financiere), pas ligne par ligne.
 model PaiementAbonnement {
-  id_paiement_abonnement    Int                @id @default(autoincrement())
+  id_paiement_abonnement    Int                    @id @default(autoincrement())
   tenant_id                 Int
   id_echeance_abonnement    Int
-
   /// Montant réellement encaissé sur cette échéance. Indépendant de EcheanceAbonnement.montant.
-  montant                   Decimal            @db.Decimal(10, 2)
-  date_paiement             DateTime           @default(now())
-
+  montant                   Decimal                @db.Decimal(10, 2)
+  date_paiement             DateTime               @default(now())
   /// Relie ce paiement à la TransactionFinanciere commune du groupe.
   /// NULL pour les paiements créés avant cette évolution (rétrocompatibilité).
   /// Si plusieurs PaiementAbonnement partagent le même id_transaction_financiere,
   /// ils font partie du même acte de paiement global.
   id_transaction_financiere Int?
-
   /// Renseigner pour annuler — ne jamais supprimer physiquement.
   canceled_at               DateTime?
   canceled_by               Int?
-
   created_by                Int?
-  created_at                DateTime           @default(now())
+  created_at                DateTime               @default(now())
   modified_by               Int?
   modified_at               DateTime?
+  echeance                  EcheanceAbonnement     @relation(fields: [id_echeance_abonnement], references: [id_echeance_abonnement])
+  transaction_financiere    TransactionFinanciere? @relation(fields: [id_transaction_financiere], references: [id_transaction_financiere])
 
-  echeance                  EcheanceAbonnement  @relation(fields: [id_echeance_abonnement], references: [id_echeance_abonnement])
-
+  @@index([canceled_at], map: "idx_paiement_abonnement_canceled", where: raw("(canceled_at IS NULL)"))
+  @@index([id_echeance_abonnement], map: "idx_paiement_abonnement_id_echeance")
+  @@index([id_transaction_financiere], map: "idx_paiement_abonnement_id_tf", where: raw("(id_transaction_financiere IS NOT NULL)"))
   @@map("paiement_abonnement")
 }
-
-// ==================== STOCK AJUSTEMENT (legacy — use stock_mouvement) ====================
 
 model StockAjustement {
   id_stock_ajustement Int       @id @default(autoincrement())
   id_lot              Int
   id_utilisateur      Int
-  type                String    // perte | casse | inventaire | correction
+  type                String
   quantite            Decimal   @db.Decimal(12, 3)
   motif               String?
   date_ajustement     DateTime  @default(now())
-  statut              String    @default("valide") // brouillon | valide | annule
+  statut              String    @default("valide")
   created_at          DateTime  @default(now())
   created_by          Int?
   updated_at          DateTime?
@@ -623,8 +565,6 @@ model StockAjustement {
 
   @@map("stock_ajustement")
 }
-
-// ==================== RETOUR COLLABORATEUR (legacy — use stock_mouvement) ====================
 
 model RetourCollaborateur {
   id_retour_collaborateur Int       @id @default(autoincrement())

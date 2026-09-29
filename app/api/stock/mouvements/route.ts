@@ -8,7 +8,15 @@ export const GET = withAuth(
     const data = await listStockMouvements({
       tenantId,
       id_lot: searchParams.get('id_lot') ?? undefined,
-      limit: Number(searchParams.get('limit') ?? 100),
+      source_type: searchParams.get('source_type') ?? undefined,
+      type: searchParams.get('type') ?? undefined,
+      id_pdv: searchParams.get('id_pdv') ?? undefined,
+      id_utilisateur: searchParams.get('id_utilisateur') ?? undefined,
+      dateMin: searchParams.get('dateMin') ?? undefined,
+      dateMax: searchParams.get('dateMax') ?? undefined,
+      q: searchParams.get('q') ?? undefined,
+      limit: Number(searchParams.get('limit') ?? 500),
+      page: Number(searchParams.get('page') ?? 1),
     })
     return NextResponse.json(data)
   },

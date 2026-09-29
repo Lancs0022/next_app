@@ -360,5 +360,69 @@ describe('ResponsiveDataTable — Upgrade & Robustesse', () => {
       expect(screen.getByText('Échéance Février 2026')).toBeDefined()
     })
   })
+
+  // ── 6. Lignes d'entête secondaires (isHeaderRow) ───────────────────────────
+  describe('Lignes d\'entête secondaires (isHeaderRow)', () => {
+    interface SubRowItem {
+      id: string | number
+      label: string
+      statut?: string
+      _isHeader?: boolean
+      children?: SubRowItem[]
+    }
+
+    const testDataWithHeader: SubRowItem[] = [
+      {
+        id: 'parent-1',
+        label: 'Souscription #1',
+        children: [
+          { id: 'hdr-1', label: 'ENTETE_PERIODE', statut: 'ENTETE_STATUT', _isHeader: true },
+          { id: 'sub-1', label: 'Janvier 2026', statut: 'PAYE' },
+          { id: 'sub-2', label: 'Février 2026', statut: 'EN_ATTENTE' },
+        ],
+      },
+    ]
+
+    const subCols: Column<SubRowItem>[] = [
+      { field: 'label', headerName: 'Période' },
+      { field: 'statut', headerName: 'Statut' },
+    ]
+
+    it('affiche la ligne entête sur desktop avec style subheader et sans chevron/tiret', () => {
+      render(
+        <ResponsiveDataTable
+          columns={subCols}
+          data={testDataWithHeader}
+          childrenField="children"
+          defaultExpandedAll={true}
+        />
+      )
+
+      expect(screen.getByText('ENTETE_PERIODE')).toBeDefined()
+      expect(screen.getByText('ENTETE_STATUT')).toBeDefined()
+      expect(screen.getByText('Janvier 2026')).toBeDefined()
+    })
+
+    it('masque complètement la ligne entête sur mobile pour éviter les cards redondantes', () => {
+      window.innerWidth = 500
+      window.dispatchEvent(new Event('resize'))
+
+      render(
+        <ResponsiveDataTable
+          columns={subCols}
+          data={testDataWithHeader}
+          childrenField="children"
+          defaultExpandedAll={true}
+        />
+      )
+
+      expect(screen.getAllByText('Janvier 2026').length).toBeGreaterThan(0)
+      expect(screen.queryByText('ENTETE_PERIODE')).toBeNull()
+      expect(screen.queryByText('ENTETE_STATUT')).toBeNull()
+
+      window.innerWidth = 1024
+      window.dispatchEvent(new Event('resize'))
+    })
+  })
 })
 

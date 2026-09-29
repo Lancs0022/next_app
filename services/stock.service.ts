@@ -636,7 +636,7 @@ export async function listCatalogueStock(tenantId: number, id_collaborateur?: st
   const lotIds = lots.map(l => l.id_lot)
   const lotToProd = Object.fromEntries(lots.map(l => [l.id_lot, l.id_produit]))
 
-  let stockByLot: Record<number, number> = {}
+  const stockByLot: Record<number, number> = {}
   if (lotIds.length > 0) {
     slog.step('Agrégation du stock actuel')
     const stocks = await prisma.stockActuel.findMany({
@@ -695,30 +695,303 @@ export async function listCatalogueStock(tenantId: number, id_collaborateur?: st
   return { data }
 }
 
-// ─── List stock movements ───────────────────────────────────────────────────
+// ─── List stock movements (Journal & Ledger) ─────────────────────────────────
 
 export async function listStockMouvements(params: {
   tenantId: number
-  id_lot?: string
+  id_lot?: string | number
   source_type?: string
+  type?: string
+  id_pdv?: string | number
+  id_utilisateur?: string | number
+  dateMin?: string
+  dateMax?: string
+  q?: string
   limit?: number
+  page?: number
 }) {
-  const { tenantId, id_lot, source_type, limit = 100 } = params
+  const {
+    tenantId,
+    id_lot,
+    source_type,
+    type,
+    id_pdv,
+    id_utilisateur,
+    dateMin,
+    dateMax,
+    q,
+    limit = 500,
+    page = 1,
+  } = params
 
   const where: Record<string, unknown> = { tenant_id: tenantId }
+
   if (id_lot) {
-    const lotId = parseInt(id_lot, 10)
-    if (!isNaN(lotId)) where.id_lot = lotId
+    const lotId = Number(id_lot)
+    if (!Number.isNaN(lotId)) where.id_lot = lotId
   }
+
   if (source_type) where.source_type = source_type
+  if (type) where.type = type
+
+  if (id_utilisateur) {
+    const uId = Number(id_utilisateur)
+    if (!Number.isNaN(uId)) where.created_by = uId
+  }
+
+  if (dateMin || dateMax) {
+    const dateRange: Record<string, Date> = {}
+    if (dateMin) dateRange.gte = new Date(dateMin)
+    if (dateMax) {
+      const end = new Date(dateMax)
+      end.setHours(23, 59, 59, 999)
+      dateRange.lte = end
+    }
+    where.date_mouvement = dateRange
+  }
+
+  // Pre-filter on lots or search term q
+  if (id_pdv || (q && q.trim())) {
+    let matchingLotIds: number[] | null = null
+
+    if (id_pdv) {
+      const pdvId = Number(id_pdv)
+      if (!Number.isNaN(pdvId)) {
+        const pdvLots = await prisma.livraisonItem.findMany({
+          where: { tenant_id: tenantId, id_pdv: pdvId },
+          select: { id_lot: true },
+        })
+        matchingLotIds = pdvLots.map((l) => l.id_lot)
+      }
+    }
+
+    if (q && q.trim()) {
+      const term = q.trim()
+      const [matchingProds, matchingUsers, matchingPdvs] = await Promise.all([
+        prisma.produitCatalogue.findMany({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { nom: { contains: term, mode: 'insensitive' } },
+              { sku: { contains: term, mode: 'insensitive' } },
+              { categorie: { contains: term, mode: 'insensitive' } },
+            ],
+          },
+          select: { id_produit: true },
+        }),
+        prisma.utilisateur.findMany({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { nom: { contains: term, mode: 'insensitive' } },
+              { prenom: { contains: term, mode: 'insensitive' } },
+            ],
+          },
+          select: { id_utilisateur: true },
+        }),
+        prisma.pointDeVente.findMany({
+          where: {
+            tenant_id: tenantId,
+            nom: { contains: term, mode: 'insensitive' },
+          },
+          select: { id_pdv: true },
+        }),
+      ])
+
+      const prodIds = matchingProds.map((p) => p.id_produit)
+      const userIds = matchingUsers.map((u) => u.id_utilisateur)
+      const qPdvIds = matchingPdvs.map((p) => p.id_pdv)
+
+      const lotsFromProds = (prodIds.length > 0 || qPdvIds.length > 0)
+        ? await prisma.livraisonItem.findMany({
+            where: {
+              tenant_id: tenantId,
+              OR: [
+                ...(prodIds.length > 0 ? [{ id_produit: { in: prodIds } }] : []),
+                ...(qPdvIds.length > 0 ? [{ id_pdv: { in: qPdvIds } }] : []),
+              ],
+            },
+            select: { id_lot: true },
+          })
+        : []
+
+      const qLotIds = lotsFromProds.map((l) => l.id_lot)
+      const numTerm = Number(term)
+      if (!Number.isNaN(numTerm)) {
+        qLotIds.push(numTerm)
+      }
+
+      if (matchingLotIds) {
+        matchingLotIds = matchingLotIds.filter((id) => qLotIds.includes(id))
+      } else {
+        matchingLotIds = qLotIds
+      }
+
+      const orClauses: Array<Record<string, unknown>> = []
+      if (matchingLotIds.length > 0) {
+        orClauses.push({ id_lot: { in: matchingLotIds } })
+      }
+      if (userIds.length > 0) {
+        orClauses.push({ created_by: { in: userIds } })
+      }
+      if (!Number.isNaN(numTerm)) {
+        orClauses.push({ source_id: numTerm })
+        orClauses.push({ id_stock_mouvement: numTerm })
+      }
+
+      if (orClauses.length > 0) {
+        where.OR = orClauses
+      } else {
+        return { data: [], total: 0, page, limit }
+      }
+    } else if (matchingLotIds !== null) {
+      if (matchingLotIds.length === 0) return { data: [], total: 0, page, limit }
+      where.id_lot = { in: matchingLotIds }
+    }
+  }
 
   const rows = await prisma.stockMouvement.findMany({
     where,
-    take: Math.min(500, limit),
+    take: Math.min(1000, Math.max(1, limit)),
     orderBy: { date_mouvement: 'desc' },
   })
 
-  return { data: rows }
+  if (rows.length === 0) {
+    return { data: [], total: 0, page, limit }
+  }
+
+  // Batch resolve all related entities without N+1
+  const lotIds = [...new Set(rows.map((r) => r.id_lot))]
+  const userIds = [...new Set(rows.map((r) => r.created_by).filter((id): id is number => id != null))]
+
+  const venteIds = [...new Set(rows.filter((r) => r.source_type === 'VENTE' && r.source_id).map((r) => r.source_id!))]
+  const livraisonIds = [...new Set(rows.filter((r) => r.source_type === 'LIVRAISON' && r.source_id).map((r) => r.source_id!))]
+  const transfertIds = [...new Set(rows.filter((r) => r.source_type === 'TRANSFERT' && r.source_id).map((r) => r.source_id!))]
+  const ajustementIds = [...new Set(rows.filter((r) => r.source_type === 'AJUSTEMENT' && r.source_id).map((r) => r.source_id!))]
+
+  const [lots, users, ventes, livraisons, transferts, ajustements, allPdvs] = await Promise.all([
+    prisma.livraisonItem.findMany({
+      where: { id_lot: { in: lotIds } },
+      include: {
+        produit_catalogue: {
+          include: { unite_mesure: true },
+        },
+      },
+    }),
+    userIds.length > 0
+      ? prisma.utilisateur.findMany({
+          where: { id_utilisateur: { in: userIds } },
+          select: { id_utilisateur: true, nom: true, prenom: true },
+        })
+      : [],
+    venteIds.length > 0
+      ? prisma.vente.findMany({
+          where: { id_vente: { in: venteIds } },
+          select: { id_vente: true, id_client: true, id_point_vente: true, statut: true, date_vente: true },
+        })
+      : [],
+    livraisonIds.length > 0
+      ? prisma.livraison.findMany({
+          where: { id_livraison: { in: livraisonIds } },
+          select: { id_livraison: true, reference: true, date_livraison: true },
+        })
+      : [],
+    transfertIds.length > 0
+      ? prisma.stockTransfert.findMany({
+          where: { id_stock_transfert: { in: transfertIds } },
+          select: { id_stock_transfert: true, id_point_vente_source: true, id_point_vente_destination: true, commentaire: true, date_transfert: true },
+        })
+      : [],
+    ajustementIds.length > 0
+      ? prisma.stockAjustement.findMany({
+          where: { id_stock_ajustement: { in: ajustementIds } },
+          select: { id_stock_ajustement: true, type: true, motif: true, statut: true, date_ajustement: true },
+        })
+      : [],
+    prisma.pointDeVente.findMany({
+      where: { tenant_id: tenantId },
+      select: { id_pdv: true, nom: true },
+    }),
+  ])
+
+  const clientIds = [...new Set(ventes.map((v) => v.id_client))]
+  const clients = clientIds.length > 0
+    ? await prisma.client.findMany({
+        where: { id_client: { in: clientIds } },
+        select: { id_client: true, nom: true, prenom: true },
+      })
+    : []
+
+  const lotMap = new Map(lots.map((l) => [l.id_lot, l]))
+  const userMap = new Map(users.map((u) => [u.id_utilisateur, `${u.prenom ? u.prenom + ' ' : ''}${u.nom}`.trim()]))
+  const pdvMap = new Map(allPdvs.map((p) => [p.id_pdv, p.nom]))
+  const clientMap = new Map(clients.map((c) => [c.id_client, `${c.prenom ? c.prenom + ' ' : ''}${c.nom}`.trim()]))
+  const venteMap = new Map(ventes.map((v) => [v.id_vente, v]))
+  const livraisonMap = new Map(livraisons.map((l) => [l.id_livraison, l]))
+  const transfertMap = new Map(transferts.map((t) => [t.id_stock_transfert, t]))
+  const ajustementMap = new Map(ajustements.map((a) => [a.id_stock_ajustement, a]))
+
+  const enriched = rows.map((r) => {
+    const lot = lotMap.get(r.id_lot)
+    const prod = lot?.produit_catalogue
+    const unite = prod?.unite_mesure
+
+    const vente = r.source_type === 'VENTE' && r.source_id ? venteMap.get(r.source_id) : null
+    const livraison = r.source_type === 'LIVRAISON' && r.source_id ? livraisonMap.get(r.source_id) : null
+    const transfert = r.source_type === 'TRANSFERT' && r.source_id ? transfertMap.get(r.source_id) : null
+    const ajustement = r.source_type === 'AJUSTEMENT' && r.source_id ? ajustementMap.get(r.source_id) : null
+
+    const clientNom = vente ? clientMap.get(vente.id_client) || null : null
+    const pdvSourceNom = transfert ? pdvMap.get(transfert.id_point_vente_source) || null : null
+    const pdvDestNom = transfert ? pdvMap.get(transfert.id_point_vente_destination) || null : null
+
+    return {
+      id_stock_mouvement: r.id_stock_mouvement,
+      tenant_id: r.tenant_id,
+      id_lot: r.id_lot,
+      type: r.type,
+      quantite: Number(r.quantite),
+      before_qty: r.before_qty != null ? Number(r.before_qty) : null,
+      after_qty: r.after_qty != null ? Number(r.after_qty) : null,
+      source_type: r.source_type,
+      source_id: r.source_id,
+      date_mouvement: r.date_mouvement.toISOString(),
+      created_at: r.created_at.toISOString(),
+      created_by: r.created_by,
+      created_by_nom: r.created_by ? userMap.get(r.created_by) || null : null,
+
+      // Produit & Lot
+      libelle_produit: prod?.nom || null,
+      sku_produit: prod?.sku || null,
+      categorie_produit: prod?.categorie || null,
+      unite_code: unite?.code || prod?.unite || null,
+      unite_label: unite?.label || null,
+      est_decimal: Boolean(unite?.est_decimal),
+      statut_lot: lot?.statut || null,
+
+      // Localisation
+      id_pdv: lot?.id_pdv ?? null,
+      nom_pdv: lot?.id_pdv ? pdvMap.get(lot.id_pdv) || null : null,
+
+      // Source métier
+      client_nom: clientNom,
+      reference_livraison: livraison?.reference || null,
+      source_statut: vente?.statut || ajustement?.statut || (livraison ? 'valide' : null),
+      source_date: (vente?.date_vente || livraison?.date_livraison || transfert?.date_transfert || ajustement?.date_ajustement)?.toISOString() || null,
+      pdv_source_nom: pdvSourceNom,
+      pdv_dest_nom: pdvDestNom,
+      transfert_commentaire: transfert?.commentaire || null,
+      ajustement_type: ajustement?.type || null,
+      ajustement_motif: ajustement?.motif || null,
+    }
+  })
+
+  return {
+    data: enriched,
+    total: enriched.length,
+    page,
+    limit,
+  }
 }
 
 // ─── Generate stock snapshot ────────────────────────────────────────────────
